@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
+<!-- PROTEÇÃO POR PASSWORD: inserir antes do conteúdo da página -->
+<script>
+  (function(){
+    var password = prompt("Insere a password para aceder ao site:");
+    if (password !== "1002bsl") {
+      document.write("<!doctype html><html><head><meta charset='utf-8'><title>Acesso negado</title></head><body style='font-family:Arial,Helvetica,sans-serif;text-align:center;margin-top:60px;'><h1 style='color:#d00'>Acesso negado ❌</h1><p>Palavra-passe incorrecta.</p></body></html>");
+      throw new Error("Acesso negado");
+    }
+  })();
+</script>
+<!-- FIM DA PROTEÇÃO -->
+
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Planos Auto-Estradas | Concelho de Leiria</title>

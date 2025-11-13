@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Planos Auto-Estradas | Concelho de Leiria</title>
+  <style>
+    :root{
+      --bg:#0f1221;
+      --panel:#151936;
+      --panel-2:#1c2147;
+      --accent:#3b82f6;
+      --accent-2:#22d3ee;
+      --text:#e5e7eb;
+      --muted:#9aa3b2;
+      --ok:#22c55e;
+      --warn:#f59e0b;
+      --danger:#ef4444;
+      --border:rgba(255,255,255,0.08);
+      --chip:#243055;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background:linear-gradient(180deg, #0b0e1a, var(--bg));
+      color:var(--text);
+      font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    header{
+      padding:16px 20px;
+      border-bottom:1px solid var(--border);
+      position:sticky;top:0;backdrop-filter:saturate(1.2) blur(6px);
+      background:rgba(15,18,33,0.8);
+      z-index:10;
+    }
+    .brand{
+      display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:0.3px
+    }
+    .dot{
+      width:12px;height:12px;border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      box-shadow:0 0 18px rgba(34,211,238,0.5);
+    }
+    .container{max-width:1200px;margin:0 auto;padding:20px}
+    .grid{
+      display:grid;grid-template-columns:1.25fr 1fr;gap:20px
+    }
+    @media (max-width:1024px){.grid{grid-template-columns:1fr}}
+    .card{
+      background:linear-gradient(180deg,var(--panel),var(--panel-2));
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.25);
+    }
+    .card h2{
+      margin:0 0 12px; font-size:20px; font-weight:700
+    }
+    .form{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:12px
+    }
+    @media (max-width:900px){.form{grid-template-columns:1fr 1fr}}
+    @media (max-width:560px){.form{grid-template-columns:1fr}}
+    label{
+      display:block;font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:0.2px
+    }
+    select,input{
+      width:100%;
+      background:#0f132b;
+      color:var(--text);
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:12px 12px;
+      outline:none;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    select:focus,input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,.2)}
+    .actions{display:flex;gap:10px;align-items:center;margin-top:6px}
+    button{
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      color:#0b0e1a;font-weight:700;border:0;border-radius:10px;padding:12px 16px;cursor:pointer
+    }
+    button.secondary{
+      background:#0f132b;color:var(--text);border:1px solid var(--border)
+    }
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .chip{
+      background:var(--chip);
+      border:1px solid var(--border);
+      color:var(--text);
+      padding:6px 10px;border-radius:999px;font-size:12px
+    }
+    .results{
+      display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px
+    }
+    @media (max-width:900px){.results{grid-template-columns:1fr}}
+    .list{
+      border-top:1px dashed var(--border);padding-top:12px
+    }
+    .list h3{margin:0 0 8px;font-size:16px}
+    .means{
+      display:flex;flex-direction:column;gap:8px; margin-top:8px
+    }
+    .mean{
+      display:flex;align-items:center;gap:8px;
+      background:#0f132b;border:1px solid var(--border);
+      padding:10px;border-radius:10px
+    }
+    .badge{font-size:11px;color:var(--muted)}
+    .empty{color:var(--muted);font-size:14px}
+    .viz{
+      margin-top:8px;border:1px solid var(--border);border-radius:12px;overflow:hidden
+    }
+    .scale{
+      display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--border)
+    }
+    svg{display:block;width:100%;height:140px;background:linear-gradient(180deg,#0e1226,#0b0e1a)}
+    .legend{display:flex;gap:12px;margin-top:10px;font-size:12px;color:var(--muted)}
+    .legend .swatch{width:10px;height:10px;border-radius:2px;margin-right:6px;display:inline-block}
+    .swatch-ref{background:#7dd3fc}
+    .swatch-km{background:#22c55e}
+    .swatch-toll{background:#f59e0b}
+    footer{
+      color:var(--muted);font-size:12px;text-align:center;margin-top:24px
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="dot"></span>
+      <div>Consulta Rápida PPI Auto-Estradas | Concelho de Leiria</div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="grid">
+      <div class="card">
+        <h2>Pesquisa</h2>
+        <div class="form">
+          <div>
+            <label>Auto-Estrada</label>
+            <select id="road">
+              <option value="">— selecione —</option>
+              <option value="A1">A1</option>
+              <option value="A8">A8</option>
+              <option value="A17">A17</option>
+              <option value="A19">A19</option>
+            </select>
+          </div>
+          <div>
+            <label>Km</label>
+            <input id="km" type="text" placeholder="ex.: 121 ou 114,475" />
+          </div>
+          <div>
+            <label>Sentido</label>
+            <select id="dir">
+              <option value="">— selecione —</option>
+              <option>Sul/Norte</option>
+              <option>Norte/Sul</option>
+            </select>
+          </div>
+          <div>
+            <label>Tipo de Ocorrência</label>
+            <select id="type">
+              <option value="">— selecione —</option>
+              <option>Acidente Rodoviário</option>
+              <option>Acidente Matérias Perigosas</option>
+              <option>Incêndio em Transportes</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="search">Consultar</button>
+          <button class="secondary" id="clear">Limpar</button>
+        </div>
+
+        <div class="chips" id="refs"></div>
+
+        <div class="viz">
+          <div class="scale"><span id="scale-left">Km —</span><span id="scale-right">Km —</span></div>
+          <svg id="svg" viewBox="0 0 1000 140" preserveAspectRatio="none" aria-label="Representação do troço">
+            <!-- Rendered dynamically -->
+          </svg>
+          <div class="legend">
+            <span><span class="swatch swatch-ref"></span> Referências</span>
+            <span><span class="swatch swatch-km"></span> Km selecionado</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Resultado</h2>
+        <div class="results">
+          <div class="list">
+            <h3>Meios a enviar</h3>
+            <div id="means" class="means"></div>
+          </div>
+          <div class="list">
+            <h3>Detalhes</h3>
+            <div id="details" class="means"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      João Paulo Pereira | Companhia Bombeiros Sapadores de Leiria
+
+    </footer>
+  </div>
+
+<script>
+/* Utilitários */
+const normalizeUnit = s => s
+  .replace(/ASBC/gi,'ABSC')       // corrigir typos do documento
+  .replace(/Sapdores/gi,'Sapadores')
+  .trim();
+
+const parseKm = raw => {
+  if (!raw) return null;
+  const n = parseFloat(String(raw).replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+};
+
+const fmtKm = n => {
+  if (n == null) return '';
+  const s = n.toFixed(3);
+  return s.replace('.', ',').replace(/,000$/, '');
+};
+
+/* Dataset estruturado a partir do documento */
+const DATA = {
+  A1: {
+    references: [
+      { name:'Fátima', km:114.475 },
+      { name:'Leiria', km:129.450 },
+      { name:'Pombal', km:153.775 }
+    ],
+    intervals: [
+      {
+        start:114.475, end:129.450,
+        directions:{
+          'Norte/Sul':{
+            'Acidente Rodoviário': ['ABSC Sapadores','VSAT Sapadores','ABSC V.Leiria'].map(normalizeUnit),
+            'Acidente Matérias Perigosas': ['VSAT Sapadores','ABSC V.Leiria','VPMA Sapadores'].map(normalizeUnit),
+            'Incêndio em Transportes': ['VUCI Sapadores','VTTU V.Leiria','ABSC Sapadores'].map(normalizeUnit),
+          }
+        }
+      },
+      {
+        start:129.450, end:153.775,
+        directions:{
+          'Sul/Norte':{
+            'Acidente Rodoviário': ['ABSC Sapadores','VSAT Sapadores','ABSC V.Leiria'].map(normalizeUnit),
+            'Acidente Matérias Perigosas': ['VSAT Sapadores','ABSC V.Leiria','VPMA Sapadores'].map(normalizeUnit),
+            'Incêndio em Transportes': ['VUCI Sapadores','VTTU V.Leiria','ABSC Sapadores'].map(normalizeUnit),
+          },
+          'Norte/Sul':{
+            'Acidente Rodoviário': ['ABSC Pombal','VSAT Pombal'].map(normalizeUnit),
+            'Acidente Matérias Perigosas': ['ABSC Pombal','VSAT Pombal','VUCI V.Leiria'].map(normalizeUnit),
+            'Incêndio em Transportes': ['VUCI Pombal','VTTU Pombal','ABSC Pombal'].map(normalizeUnit),
+          }
+        }
+      }
+    ]
+  },
+
+  A8: {
+    references: [
+      { name:'M. Grande Sul', km:123.200 },
+      { name:'M. Grande Este', km:128.400 },
+      { name:'Leiria Sul', km:132.225 },
+      { name:'Cortes', km:135.159 },
+      { name:'Pousos', km:138.194 }
+    ],
+    intervals: [
+      { start:123.200, end:128.400, directions:{
+        'Sul/Norte':{
+          'Acidente Rodoviário':['ABSC M.Grande','VSAT M.Grande','ABSC Maceira'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC M.Grande','VSAT M.Grande','VUCI Maceira'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI M.Grande','VTTU M.Grande','ABSC M.Grande'].map(normalizeUnit),
+        },
+        'Norte/Sul':{
+          'Acidente Rodoviário':['ABSC V.Leiria','VSAT V.Leiria','ABSC Sapadores'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC V.Leiria','VSAT V.Leiria','VPMA Sapadores'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI V.Leiria','VTTU V.Leiria','ABSC Sapadores'].map(normalizeUnit),
+        }
+      }},
+      { start:128.400, end:132.225, directions:{
+        'Sul/Norte':{
+          'Acidente Rodoviário':['ABSC M.Grande','VSAT M.Grande','ABSC Maceira'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC M.Grande','VSAT M.Grande','VUCI Maceira'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI M.Grande','VTTU M.Grande','ABSC M.Grande'].map(normalizeUnit),
+        },
+        'Norte/Sul':{
+          'Acidente Rodoviário':['ABSC V.Leiria','VSAT V.Leiria','ABSC Sapadores'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC V.Leiria','VSAT V.Leiria','VPMA Sapadores'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI V.Leiria','VTTU V.Leiria','ABSC Sapadores'].map(normalizeUnit),
+        }
+      }},
+      { start:132.225, end:135.159, directions:{
+        'Sul/Norte':{
+          'Acidente Rodoviário':['ABSC V.Leiria','VSAT Sapadores','ABSC Sapadores'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC V.Leiria','VSAT V.Leiria','VPMA Sapadores'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI Sapadores','VTTU V.Leiria','ABSC Sapadores'].map(normalizeUnit),
+        },
+        'Norte/Sul':{
+          'Acidente Rodoviário':['ABSC V.Leiria','VSAT Sapadores','ABSC Sapadores'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC V.Leiria','VSAT V.Leiria','VPMA Sapadores'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI Sapadores','VTTU V.Leiria','ABSC Sapadores'].map(normalizeUnit),
+        }
+      }},
+      { start:135.159, end:138.194, directions:{
+        'Sul/Norte':{
+          'Acidente Rodoviário':['ABSC V.Leiria','VSAT Sapadores','ABSC Sapadores'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC V.Leiria','VSAT V.Leiria','VPMA Sapadores'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI Sapadores','VTTU V.Leiria','ABSC Sapadores'].map(normalizeUnit),
+        },
+        'Norte/Sul':{
+          'Acidente Rodoviário':['ABSC V.Leiria','VSAT Sapadores','ABSC Sapadores'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC V.Leiria','VSAT V.Leiria','VPMA Sapadores'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI Sapadores','VTTU V.Leiria','ABSC Sapadores'].map(normalizeUnit),
+        }
+      }},
+    ]
+  },
+
+  A17: {
+    references: [
+      { name:'Leiria Sul', km:0.000 },
+      { name:'Leiria Norte', km:10.290 },
+      { name:'Monte Real', km:14.675 },
+      { name:'Monte Redondo', km:19.950 },
+      { name:'Guia', km:26.450 },
+      { name:'Louriçal', km:32.200 },
+    ],
+    intervals: [
+      { start:0.000, end:10.290, directions:{
+        'Sul/Norte':{
+          'Acidente Rodoviário':['ABSC M.Grande','VSAT M.Grande','ABSC Maceira'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC M.Grande','VSAT M.Grande','VUCI Maceira'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI M.Grande','VTTU M.Grande','ABSC M.Grande'].map(normalizeUnit),
+        },
+        'Norte/Sul':{
+          'Acidente Rodoviário':['ABSC Ortigosa','VSAT V.Leiria','ABSC V.Leiria'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC Ortigosa','VSAT V.Leiria','VUCI V.Leiria'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI V.Leiria','VTTU Ortigosa','ABSC Ortigosa'].map(normalizeUnit),
+        }
+      }},
+      { start:10.290, end:14.675, directions:{
+        'Sul/Norte':{
+          'Acidente Rodoviário':['ABSC Ortigosa','VSAT V.Leiria','ABSC V.Leiria'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC Ortigosa','VSAT V.Leiria','VUCI V.Leiria'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI V.Leiria','VTTU Ortigosa','ABSC Ortigosa'].map(normalizeUnit),
+        },
+        'Norte/Sul':{
+          'Acidente Rodoviário':['ABSC V.Leiria','VSAT Ortigosa','ABSC Ortigosa'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC V.Leiria','VSAT Ortigosa','VUCI V.Leiria'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI V.Leiria','VTTU Ortigosa','ABSC V.Leiria'].map(normalizeUnit),
+        }
+      }},
+      { start:14.675, end:19.950, directions:{
+        'Sul/Norte':{
+          'Acidente Rodoviário':['ABSC Ortigosa','VSAT Ortigosa','ABSC V.Leiria'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC Ortigosa','VSAT V.Leiria','VUCI V.Leiria'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI V.Leiria','VTTU Ortigosa','ABSC Ortigosa'].map(normalizeUnit),
+        },
+        'Norte/Sul':{
+          'Acidente Rodoviário':['ABSC V.Leiria','VSAT V.Leiria','ABSC Pombal'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC V.Leiria','VSAT V.Leiria','VUCI Pombal'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI V.Leiria','VTTU Pombal','ABSC V.Leiria'].map(normalizeUnit),
+        }
+      }},
+      { start:19.950, end:26.450, directions:{
+        'Sul/Norte':{
+          'Acidente Rodoviário':['ABSC V.Leiria','VSAT V.Leiria','ABSC Ortigosa'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC V.Leiria','VSAT V.Leiria','VUCI V.Leiria'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI V.Leiria','VTTU Ortigosa','ABSC V.Leiria'].map(normalizeUnit),
+        },
+        'Norte/Sul':{
+          'Acidente Rodoviário':['ABSC Pombal','VSAT Pombal','ABSC V.Leiria'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC Pombal','VSAT Pombal','VUCI V.Leiria'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI Pombal','VTTU V.Leiria','ABSC Pombal'].map(normalizeUnit),
+        }
+      }},
+      { start:26.450, end:32.200, directions:{
+        'Sul/Norte':{
+          'Acidente Rodoviário':['ABSC V.Leiria','VSAT V.Leiria','ABSC Ortigosa'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC V.Leiria','VSAT Ortigosa','VUCI V.Leiria'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI V.Leiria','VTTU Ortigosa','ABSC V.Leiria'].map(normalizeUnit),
+        },
+        'Norte/Sul':{
+          'Acidente Rodoviário':['ABSC Pombal','VSAT Pombal','ABSC Pombal'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC Pombal','VSAT Pombal','VUCI Pombal'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI Pombal','VTTU Ansião','ABSC Pombal'].map(normalizeUnit),
+        }
+      }},
+    ]
+  },
+
+  A19: {
+    references: [
+      { name:'Batalha', km:113.900 },
+      { name:'Azóia', km:120.100 },
+      { name:'Barosa', km:122.700 },
+      { name:'Gândara', km:123.700 },
+    ],
+    intervals: [
+      { start:113.900, end:120.100, directions:{
+        'Sul/Norte':{
+          'Acidente Rodoviário':['ABSC Batalha','ABSC P.Mós','VSAT Batalha'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC Batalha','VUCI Batalha','VSAT P.Mós'].map(normalizeUnit),
+          'Incêndio em Transportes':['ABSC Batalha','VUCI Batalha','VTTU P.Mós'].map(normalizeUnit),
+        },
+        'Norte/Sul':{
+          'Acidente Rodoviário':['ABSC Sapadores','ABSC V.Leiria','VSAT Sapadores'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC Sapadores','VPMA Sapadores','VSAT V.Leiria'].map(normalizeUnit),
+          'Incêndio em Transportes':['ABSC Sapadores','VUCI Sapadores','VTTU V.Leiria'].map(normalizeUnit),
+        }
+      }},
+      { start:120.100, end:122.700, directions:{
+        'Sul/Norte':{
+          'Acidente Rodoviário':['ABSC Maceira','ABSC Batalha','VSAT Maceira'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC Maceira','VPMA Sapadores','VSAT Maceira'].map(normalizeUnit),
+          'Incêndio em Transportes':['ABSC Maceira','VUCI Batalha','VTTU Maceira'].map(normalizeUnit),
+        },
+        'Norte/Sul':{
+          'Acidente Rodoviário':['ABSC Sapadores','ABSC V.Leiria','VSAT Sapadores'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC V.Leiria','VPMA Sapadores','VSAT V.Leiria'].map(normalizeUnit),
+          'Incêndio em Transportes':['ABSC V.Leiria','VUCI Sapadores','VTTU V.Leiria'].map(normalizeUnit),
+        }
+      }},
+      { start:122.700, end:123.700, directions:{
+        'Sul/Norte':{
+          'Acidente Rodoviário':['ABSC Sapadores','ABSC V.Leiria','VSAT Sapadores'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC V.Leiria','VPMA Sapadores','VSAT V.Leiria'].map(normalizeUnit),
+          'Incêndio em Transportes':['ABSC V.Leiria','VUCI Sapadores','VTTU V.Leiria'].map(normalizeUnit),
+        },
+        'Norte/Sul':{
+          'Acidente Rodoviário':['ABSC Sapadores','ABSC V.Leiria','VSAT Sapadores'].map(normalizeUnit),
+          'Acidente Matérias Perigosas':['ABSC V.Leiria','VPMA Sapadores','VSAT V.Leiria'].map(normalizeUnit),
+          'Incêndio em Transportes':['ABSC V.Leiria','VUCI Sapadores','VTTU V.Leiria'].map(normalizeUnit),
+        }
+      }},
+    ]
+  }
+};
+
+/* Render referências como chips */
+function renderReferences(road){
+  const wrap = document.getElementById('refs');
+  wrap.innerHTML = '';
+  if (!road || !DATA[road]) return;
+
+  DATA[road].references
+    .sort((a,b)=>a.km-b.km)
+    .forEach(ref=>{
+      const d = document.createElement('div');
+      d.className='chip';
+      d.textContent = `${ref.name} — Km ${fmtKm(ref.km)}`;
+      wrap.appendChild(d);
+    });
+}
+
+/* Encontrar intervalo para um km */
+function findInterval(road, km){
+  if (!road || km==null || !DATA[road]) return null;
+  return DATA[road].intervals.find(i => km >= i.start && km < i.end) || null;
+}
+
+/* Consultar meios */
+function lookupMeans(road, km, dir, type){
+  const interval = findInterval(road, km);
+  if (!interval) return {means:[], interval:null};
+
+  const dirBlock = interval.directions[dir];
+  if (!dirBlock) return {means:[], interval};
+
+  const arr = dirBlock[type];
+  return {means: Array.isArray(arr) ? arr : [], interval};
+}
+
+/* Render resultado */
+function renderResults({means, interval}, road, km, dir, type){
+  const meansEl = document.getElementById('means');
+  const detailsEl = document.getElementById('details');
+  meansEl.innerHTML = '';
+  detailsEl.innerHTML = '';
+
+  if (means.length === 0){
+    const p = document.createElement('div');
+    p.className='empty';
+    p.textContent = 'Sem dados para a combinação selecionada.';
+    meansEl.appendChild(p);
+  } else {
+    means.forEach(m=>{
+      const row = document.createElement('div');
+      row.className='mean';
+      row.innerHTML = `<strong>${m}</strong>`;
+      meansEl.appendChild(row);
+    });
+  }
+
+  const info = [
+    {label:'Auto-Estrada', value: road || '—'},
+    {label:'Km', value: km!=null ? fmtKm(km) : '—'},
+    {label:'Sentido', value: dir || '—'},
+    {label:'Tipo de Ocorrência', value: type || '—'},
+    {label:'Intervalo aplicado', value: interval ? `Km ${fmtKm(interval.start)} — ${fmtKm(interval.end)}` : '—'},
+  ];
+
+  info.forEach(i=>{
+    const row = document.createElement('div');
+    row.className='mean';
+    row.innerHTML = `<span class="badge">${i.label}</span><strong>${i.value}</strong>`;
+    detailsEl.appendChild(row);
+  });
+}
+
+/* Visualização SVG do troço */
+function renderSVG(road, kmSel){
+  const svg = document.getElementById('svg');
+  const left = document.getElementById('scale-left');
+  const right = document.getElementById('scale-right');
+  svg.innerHTML='';
+  left.textContent='Km —';
+  right.textContent='Km —';
+
+  if (!road || !DATA[road]) return;
+
+  const refs = [...DATA[road].references].sort((a,b)=>a.km-b.km);
+  const startKm = refs[0]?.km ?? 0;
+  const endKm = refs[refs.length-1]?.km ?? 0;
+  const pad = Math.max( (endKm - startKm) * 0.05, 0.5 );
+  const minKm = startKm - pad;
+  const maxKm = endKm + pad;
+
+  left.textContent = `Km ${fmtKm(minKm)}`;
+  right.textContent = `Km ${fmtKm(maxKm)}`;
+
+  const W=1000, H=140, BASE_Y=80;
+
+  const line = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  line.setAttribute('x', 40);
+  line.setAttribute('y', BASE_Y-4);
+  line.setAttribute('width', W-80);
+  line.setAttribute('height', 8);
+  line.setAttribute('rx', 4);
+  line.setAttribute('fill', '#1f2a55');
+  svg.appendChild(line);
+
+  const scaleX = km => {
+    const t = (km - minKm) / (maxKm - minKm);
+    return 40 + t * (W-80);
+  };
+
+  // Referências
+  refs.forEach(r=>{
+    const x = scaleX(r.km);
+    const tick = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    tick.setAttribute('x', x-1);
+    tick.setAttribute('y', BASE_Y-14);
+    tick.setAttribute('width', 2);
+    tick.setAttribute('height', 28);
+    tick.setAttribute('fill', '#7dd3fc');
+    svg.appendChild(tick);
+
+    const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx', x);
+    dot.setAttribute('cy', BASE_Y);
+    dot.setAttribute('r', 5);
+    dot.setAttribute('fill', '#7dd3fc');
+    dot.setAttribute('stroke', '#083344');
+    svg.appendChild(dot);
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x', x);
+    label.setAttribute('y', BASE_Y-28);
+    label.setAttribute('fill', '#b9e6ff');
+    label.setAttribute('font-size','12');
+    label.setAttribute('text-anchor','middle');
+    label.textContent = `${r.name} • Km ${fmtKm(r.km)}`;
+    svg.appendChild(label);
+  });
+
+  // Km selecionado
+  if (kmSel != null){
+    const x = scaleX(kmSel);
+    const marker = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    marker.setAttribute('x', x-2);
+    marker.setAttribute('y', BASE_Y-18);
+    marker.setAttribute('width', 4);
+    marker.setAttribute('height', 36);
+    marker.setAttribute('fill', '#22c55e');
+    svg.appendChild(marker);
+
+    const pin = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    pin.setAttribute('cx', x);
+    pin.setAttribute('cy', BASE_Y);
+    pin.setAttribute('r', 6.5);
+    pin.setAttribute('fill', 'none');
+    pin.setAttribute('stroke', '#22c55e');
+    pin.setAttribute('stroke-width','2');
+    svg.appendChild(pin);
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x', x);
+    label.setAttribute('y', BASE_Y+28);
+    label.setAttribute('fill', '#86efac');
+    label.setAttribute('font-size','12');
+    label.setAttribute('text-anchor','middle');
+    label.textContent = `Km ${fmtKm(kmSel)}`;
+    svg.appendChild(label);
+  }
+
+  // Portagens (quando houver dados, desenhar em laranja)
+  // Exemplo de como adicionar (depois de ter os dados):
+  // const tolls = DATA[road].tolls || [];
+  // tolls.forEach(t => { ... desenhar ícone e label ... });
+}
+
+/* Ligações UI */
+document.getElementById('road').addEventListener('change', e=>{
+  const road = e.target.value;
+  renderReferences(road);
+  renderSVG(road, parseKm(document.getElementById('km').value));
+});
+
+document.getElementById('km').addEventListener('input', ()=>{
+  const road = document.getElementById('road').value;
+  renderSVG(road, parseKm(document.getElementById('km').value));
+});
+
+document.getElementById('search').addEventListener('click', ()=>{
+  const road = document.getElementById('road').value;
+  const km = parseKm(document.getElementById('km').value);
+  const dir = document.getElementById('dir').value;
+  const type = document.getElementById('type').value;
+
+  const res = lookupMeans(road, km, dir, type);
+  renderResults(res, road, km, dir, type);
+});
+
+document.getElementById('clear').addEventListener('click', ()=>{
+  document.getElementById('road').value='';
+  document.getElementById('km').value='';
+  document.getElementById('dir').value='';
+  document.getElementById('type').value='';
+  document.getElementById('means').innerHTML='';
+  document.getElementById('details').innerHTML='';
+  document.getElementById('refs').innerHTML='';
+  renderSVG('', null);
+});
+</script>
+</body>
+</html>

@@ -145,7 +145,7 @@
       white-space: nowrap;
     }
 
-    /* ESTILO DO GRAFICO DE AJUDA (NOVO) */
+    /* ESTILO DO GRAFICO DE AJUDA */
     .help-graphic {
       margin-top: 20px;
       background-color: #005eb8; /* Azul Autoestrada */
@@ -278,7 +278,7 @@
 <footer class="rodape">
     <div>SCh 2ª João Paulo Pereira</div>
     <div>Companhia Bombeiros Sapadores de Leiria</div>
-    <div>- Versão 3.2 -</div>
+    <div>- Versão 1.3 -</div>
 </footer>  </div>
 
 <script>
@@ -300,21 +300,13 @@ const fmtKm = n => {
   return s.replace('.', ',').replace(/,000$/, '');
 };
 
-// Limpeza de nomes para mapa
-const cleanLocationForMaps = (name) => {
-  if (!name) return '';
-  return name
-    .replace('M. Grande', 'Marinha Grande')
-    .replace('P. Mós', 'Porto de Mós');
-};
-
-/* Dataset estruturado a partir do documento */
+/* Dataset estruturado COM COORDENADAS GPS (Format: Lat,Lng) */
 const DATA = {
   A1: {
     references: [
-      { name:'Fátima', km:114.475 },
-      { name:'Leiria', km:129.450 },
-      { name:'Pombal', km:153.775 }
+      { name:'Fátima', km:114.475, coords: '39.615286,-8.664977' },
+      { name:'Leiria', km:129.450, coords: '39.731674,-8.766322' },
+      { name:'Pombal', km:153.775, coords: '39.914283,-8.611145' }
     ],
     intervals: [
       {
@@ -347,11 +339,12 @@ const DATA = {
 
   A8: {
     references: [
-      { name:'M. Grande Sul', km:123.200 },
-      { name:'M. Grande Este', km:128.400 },
-      { name:'Leiria Sul', km:132.225 },
-      { name:'Cortes', km:135.159 },
-      { name:'Pousos', km:138.194 }
+      { name:'M. Grande Sul', km:123.200, coords: '39.714589,-8.933282' },
+      { name:'M. Grande Este', km:128.400, coords: '39.743126,-8.905473' },
+      { name:'Leiria Sul', km:132.225, coords: '39.712318,-8.824558' },
+      { name:'Cortes', km:135.159, coords: '39.722513,-8.803787' },
+      { name:'Pousos', km:138.194, coords: '39.740889,-8.784904' } 
+      // Nota: Pousos liga à A19/IC2, coordenadas aprox da saída
     ],
     intervals: [
       { start:123.200, end:128.400, directions:{
@@ -407,12 +400,12 @@ const DATA = {
 
   A17: {
     references: [
-      { name:'Leiria Sul', km:0.000 },
-      { name:'Leiria Norte', km:10.290 },
-      { name:'Monte Real', km:14.675 },
-      { name:'Monte Redondo', km:19.950 },
-      { name:'Guia', km:26.450 },
-      { name:'Louriçal', km:32.200 },
+      { name:'Leiria Sul', km:0.000, coords: '39.712318,-8.824558' }, // Inicio na A8
+      { name:'Leiria Norte', km:10.290, coords: '39.761563,-8.871840' },
+      { name:'Monte Real', km:14.675, coords: '39.808620,-8.873260' },
+      { name:'Monte Redondo', km:19.950, coords: '39.855077,-8.868797' },
+      { name:'Guia', km:26.450, coords: '39.914280,-8.864334' },
+      { name:'Louriçal', km:32.200, coords: '40.002829,-8.788117' },
     ],
     intervals: [
       { start:0.000, end:10.290, directions:{
@@ -480,10 +473,10 @@ const DATA = {
 
   A19: {
     references: [
-      { name:'Batalha', km:113.900 },
-      { name:'Azóia', km:120.100 },
-      { name:'Barosa', km:122.700 },
-      { name:'Gândara', km:123.700 },
+      { name:'Batalha', km:113.900, coords: '39.654714,-8.823904' },
+      { name:'Azóia', km:120.100, coords: '39.704288,-8.815750' },
+      { name:'Barosa', km:122.700, coords: '39.726857,-8.809141' },
+      { name:'Gândara', km:123.700, coords: '39.734661,-8.807338' },
     ],
     intervals: [
       { start:113.900, end:120.100, directions:{
@@ -722,35 +715,34 @@ document.getElementById('search').addEventListener('click', ()=>{
   helpContainer.innerHTML = '';
 
   if (road && res.interval && dir) {
-    // -------------------------------------
-    // 1. CÁLCULO DA ENTRADA E DIREÇÃO
-    // -------------------------------------
+    /* ------------------------------------------------
+       1. CÁLCULO DA ENTRADA E DIREÇÃO
+       ------------------------------------------------ */
     let entryKm;
     let simpleDirName;
     let arrowIcon;
+    let mapOriginKm, mapDestKm;
 
     if (dir === 'Sul/Norte') {
-      // Sentido Sul para Norte: Entra no Km mais baixo (início do intervalo)
       entryKm = res.interval.start;
       simpleDirName = 'NORTE';
       arrowIcon = '⬆️';
+      mapOriginKm = res.interval.start;
+      mapDestKm = res.interval.end;
     } else {
-      // Sentido Norte para Sul: Entra no Km mais alto (fim do intervalo)
       entryKm = res.interval.end;
       simpleDirName = 'SUL';
       arrowIcon = '⬇️';
+      mapOriginKm = res.interval.end;
+      mapDestKm = res.interval.start;
     }
 
-    // Tenta encontrar o nome do nó correspondente ao Km de entrada
     const entryRef = DATA[road].references.find(r => Math.abs(r.km - entryKm) < 0.1);
     const rawName = entryRef ? entryRef.name : road;
     
-    // Limpa o nome para mapa (ex: M. Grande -> Marinha Grande)
-    const entryNameForMap = cleanLocationForMaps(rawName);
-
-    // -------------------------------------
-    // 2. VISUALIZAÇÃO GRÁFICA (O NOVO CARTÃO)
-    // -------------------------------------
+    /* ------------------------------------------------
+       2. VISUALIZAÇÃO GRÁFICA (CARTÃO AJUDA)
+       ------------------------------------------------ */
     helpContainer.innerHTML = `
       <div class="help-graphic">
         <div class="help-road">${road}</div>
@@ -761,52 +753,80 @@ document.getElementById('search').addEventListener('click', ()=>{
       </div>
     `;
 
-    // -------------------------------------
-    // 3. BOTÕES (PDF e MAPA)
-    // -------------------------------------
-    
+    /* ------------------------------------------------
+       3. BOTÕES (PDF e MAPA ROTA GPS)
+       ------------------------------------------------ */
     // Botão PDF
     const btnPdfLink = document.createElement('a');
     btnPdfLink.href = `${road}.pdf`;
     btnPdfLink.target = '_blank';
     btnPdfLink.innerHTML = `
       <button class="btn-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
-        📄 Abrir PPI da ${road}
+        📄 Abrir PPI
       </button>
     `;
     btnGroup.appendChild(btnPdfLink);
 
-    // Botão Mapa
-    // Cria string de busca para o Maps: "Portagem [Nome] [Estrada]"
-    const mapsQuery = `Portagem ${entryNameForMap} ${road}`;
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`;
+    // CÁLCULO DA ROTA PARA O MAPA USANDO COORDENADAS (Sem ambiguidade)
+    const originRef = DATA[road].references.find(r => Math.abs(r.km - mapOriginKm) < 0.1);
+    const destRef = DATA[road].references.find(r => Math.abs(r.km - mapDestKm) < 0.1);
+
+    // Se existirem coordenadas (devem existir sempre pois adicionei no DATA), usa-as.
+    // Fallback: usa a query de texto antiga se algo falhar
+    let mapsUrl;
+    if (originRef && originRef.coords && destRef && destRef.coords) {
+       // Usando coordenadas diretas: origin=LAT,LNG
+       mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originRef.coords}&destination=${destRef.coords}&travelmode=driving`;
+    } else {
+       // Fallback (texto)
+       const originName = originRef ? originRef.name : road;
+       const destName = destRef ? destRef.name : road;
+       mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=Portagem+${originName}+${road}&destination=Portagem+${destName}+${road}&travelmode=driving`;
+    }
 
     const btnMapLink = document.createElement('a');
     btnMapLink.href = mapsUrl;
     btnMapLink.target = '_blank';
     btnMapLink.innerHTML = `
       <button class="btn-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
-        🗺️ Mapa da Entrada (${entryNameForMap})
+        🗺️ Ver Rota (${rawName})
       </button>
     `;
     btnGroup.appendChild(btnMapLink);
-  }
-});
 
-document.getElementById('clear').addEventListener('click', ()=>{
-  document.getElementById('road').value='';
-  document.getElementById('km').value='';
-  document.getElementById('dir').value='';
-  document.getElementById('type').value='';
-  document.getElementById('means').innerHTML='';
-  document.getElementById('details').innerHTML='';
-  document.getElementById('refs').innerHTML='';
-  
-  // Limpa as áreas dinâmicas
-  document.getElementById('action-buttons').innerHTML = '';
-  document.getElementById('help-container').innerHTML = '';
-  
-  renderSVG('', null);
+    /* ------------------------------------------------
+       4. BOTÃO COPIAR (CLIPBOARD)
+       ------------------------------------------------ */
+    const meiosTexto = res.means.length > 0 ? res.means.join(', ') : 'Sem meios definidos';
+    const textoParaCopiar = `🚨 OCORRÊNCIA\n🛣️ ${road} Km ${fmtKm(km)}\n${arrowIcon} Sentido: ${simpleDirName}\n📍 Entrada: ${rawName}\n🚒 Meios: ${meiosTexto}`;
+
+    const btnCopy = document.createElement('button');
+    btnCopy.className = 'secondary';
+    btnCopy.style.width = '100%';
+    btnCopy.style.marginTop = '10px';
+    btnCopy.style.display = 'flex';
+    btnCopy.style.justifyContent = 'center';
+    btnCopy.style.alignItems = 'center';
+    btnCopy.style.gap = '8px';
+    btnCopy.innerHTML = `📋 Copiar Dados`;
+    
+    btnCopy.onclick = () => {
+        navigator.clipboard.writeText(textoParaCopiar).then(() => {
+            const originalText = btnCopy.innerHTML;
+            btnCopy.innerHTML = `✅ Copiado!`;
+            btnCopy.style.borderColor = 'var(--ok)';
+            btnCopy.style.color = 'var(--ok)';
+            setTimeout(() => {
+                btnCopy.innerHTML = originalText;
+                btnCopy.style.borderColor = 'var(--border)';
+                btnCopy.style.color = 'var(--text)';
+            }, 2000);
+        }).catch(err => alert('Erro ao copiar: ' + err));
+    };
+    
+    const detailsContainer = document.getElementById('details');
+    detailsContainer.appendChild(btnCopy);
+  }
 });
 </script>
 </body>

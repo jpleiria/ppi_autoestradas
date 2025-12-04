@@ -191,16 +191,17 @@
       <div class="card">
         <h2>Resultado 🚑🚒</h2>
         
-        <div id="pdf-container" style="margin-bottom: 15px;"></div>
-        
         <div class="results">
           <div class="list">
             <h3>Meios a enviar</h3>
             <div id="means" class="means"></div>
           </div>
           <div class="list">
-            <h3>Detalhes <span style="font-size: 13px;">(⚠️confirmar nos PPI)</span></h3>
+            <h3>Detalhes <span style="font-size: 13px;">⚠️confirmar nos PPI)</span></h3>
             <div id="details" class="means"></div>
+            
+            <div id="pdf-container" style="margin-top: 20px;"></div>
+            
           </div>
         </div>
       </div>
@@ -638,11 +639,9 @@ document.getElementById('search').addEventListener('click', ()=>{
   const res = lookupMeans(road, km, dir, type);
   renderResults(res, road, km, dir, type);
 
-  /* --- LOGICA ADICIONADA: EXIBIR BOTÃO PDF APENAS APÓS PESQUISA --- */
+  /* --- LÓGICA DO BOTÃO PDF --- */
   const pdfContainer = document.getElementById('pdf-container');
-  // Verifica se há uma estrada selecionada
   if (road) {
-    // Cria o botão dinamicamente
     pdfContainer.innerHTML = `
       <a href="${road}.pdf" target="_blank" style="text-decoration:none;">
         <button style="width:100%; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; display: flex; justify-content: center; align-items: center; gap: 8px;">
@@ -651,7 +650,6 @@ document.getElementById('search').addEventListener('click', ()=>{
       </a>
     `;
   } else {
-    // Se não houver estrada (erro na seleção), limpa
     pdfContainer.innerHTML = '';
   }
 });
@@ -665,7 +663,7 @@ document.getElementById('clear').addEventListener('click', ()=>{
   document.getElementById('details').innerHTML='';
   document.getElementById('refs').innerHTML='';
   
-  // Limpa também o botão do PDF
+  // Limpa o botão
   document.getElementById('pdf-container').innerHTML = '';
   
   renderSVG('', null);

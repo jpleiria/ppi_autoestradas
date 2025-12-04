@@ -124,6 +124,26 @@
     footer{
       color:var(--muted);font-size:12px;text-align:center;margin-top:24px
     }
+    
+    /* Classe utilitária para os botões finais */
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .btn-group a {
+      flex: 1;
+      text-decoration: none;
+    }
+    .btn-icon {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -197,10 +217,10 @@
             <div id="means" class="means"></div>
           </div>
           <div class="list">
-            <h3>Detalhes <span style="font-size: 13px;">⚠️confirmar nos PPI)</span></h3>
+            <h3>Detalhes <span style="font-size: 13px;">(⚠️confirmar nos PPI)</span></h3>
             <div id="details" class="means"></div>
             
-            <div id="pdf-container" style="margin-top: 20px;"></div>
+            <div id="action-buttons" class="btn-group"></div>
             
           </div>
         </div>
@@ -299,7 +319,7 @@ const DATA = {
         'Norte/Sul':{
           'Acidente Rodoviário':['ABSC V.Leiria','VSAT V.Leiria','ABSC Sapadores'].map(normalizeUnit),
           'Acidente Matérias Perigosas':['ABSC V.Leiria','VSAT V.Leiria','VPMA Sapadores <span style="font-size: 10px;">(quando solicitado)</span>'].map(normalizeUnit),
-          'Incêndio em Transportes':['VUCI V.Leiria','VTTU V.Leiria','ABSC Sapadores'].map(normalizeUnit),
+          'Incêndio em Transportes':['VUCI Sapadores','VTTU V.Leiria','ABSC Sapadores'].map(normalizeUnit),
         }
       }},
       { start:132.225, end:135.159, directions:{
@@ -639,18 +659,50 @@ document.getElementById('search').addEventListener('click', ()=>{
   const res = lookupMeans(road, km, dir, type);
   renderResults(res, road, km, dir, type);
 
-  /* --- LÓGICA DO BOTÃO PDF --- */
-  const pdfContainer = document.getElementById('pdf-container');
-  if (road) {
-    pdfContainer.innerHTML = `
-      <a href="${road}.pdf" target="_blank" style="text-decoration:none;">
-        <button style="width:100%; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; display: flex; justify-content: center; align-items: center; gap: 8px;">
-          📄 Abrir PPI da ${road}
-        </button>
-      </a>
+  /* --- GERAÇÃO DOS BOTÕES DE AÇÃO --- */
+  const btnGroup = document.getElementById('action-buttons');
+  btnGroup.innerHTML = ''; // Limpa botões antigos
+
+  if (road && res.interval && dir) {
+    // 1. Botão do PDF
+    const btnPdfLink = document.createElement('a');
+    btnPdfLink.href = `${road}.pdf`;
+    btnPdfLink.target = '_blank';
+    btnPdfLink.innerHTML = `
+      <button class="btn-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+        📄 Abrir PPI da ${road}
+      </button>
     `;
-  } else {
-    pdfContainer.innerHTML = '';
+    btnGroup.appendChild(btnPdfLink);
+
+    // 2. Lógica de entrada baseada no SENTIDO
+    let entryKm;
+    if (dir === 'Sul/Norte') {
+      // Sentido Sul para Norte: Entra no Km mais baixo (início do intervalo)
+      entryKm = res.interval.start;
+    } else {
+      // Sentido Norte para Sul: Entra no Km mais alto (fim do intervalo)
+      entryKm = res.interval.end;
+    }
+
+    // Tenta encontrar o nome do nó correspondente ao Km de entrada
+    // Usa uma tolerância pequena (0.1) para garantir que encontra o float
+    const entryRef = DATA[road].references.find(r => Math.abs(r.km - entryKm) < 0.1);
+    const entryName = entryRef ? entryRef.name : road; // Fallback para o nome da estrada
+    
+    // Cria string de busca para o Maps: "Nó [Nome] [Estrada]"
+    const mapsQuery = `Nó ${entryName} ${road}`;
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`;
+
+    const btnMapLink = document.createElement('a');
+    btnMapLink.href = mapsUrl;
+    btnMapLink.target = '_blank';
+    btnMapLink.innerHTML = `
+      <button class="btn-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+        🗺️ Mapa da Entrada (${entryName})
+      </button>
+    `;
+    btnGroup.appendChild(btnMapLink);
   }
 });
 
@@ -663,8 +715,8 @@ document.getElementById('clear').addEventListener('click', ()=>{
   document.getElementById('details').innerHTML='';
   document.getElementById('refs').innerHTML='';
   
-  // Limpa o botão
-  document.getElementById('pdf-container').innerHTML = '';
+  // Limpa o grupo de botões
+  document.getElementById('action-buttons').innerHTML = '';
   
   renderSVG('', null);
 });

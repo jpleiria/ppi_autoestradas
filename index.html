@@ -125,7 +125,7 @@
       color:var(--muted);font-size:12px;text-align:center;margin-top:24px
     }
     
-    /* Classe utilitária para os botões finais */
+    /* BOTOES DE ACAO */
     .btn-group {
       display: flex;
       gap: 10px;
@@ -144,6 +144,51 @@
       gap: 8px;
       white-space: nowrap;
     }
+
+    /* ESTILO DO GRAFICO DE AJUDA (NOVO) */
+    .help-graphic {
+      margin-top: 20px;
+      background-color: #005eb8; /* Azul Autoestrada */
+      color: white;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+      border: 2px solid white;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    .help-road {
+      font-size: 14px;
+      background: #dc2626; /* Vermelho topo */
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .help-entry {
+      font-size: 20px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .help-arrow {
+      font-size: 32px;
+      line-height: 1;
+      margin: 5px 0;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .help-dir {
+      font-size: 14px;
+      text-transform: uppercase;
+      opacity: 0.9;
+      border-top: 1px solid rgba(255,255,255,0.3);
+      padding-top: 5px;
+      width: 100%;
+    }
+
   </style>
 </head>
 <body>
@@ -217,6 +262,9 @@
             <div id="means" class="means"></div>
           </div>
           <div class="list">
+            
+            <div id="help-container"></div>
+
             <h3>Detalhes <span style="font-size: 13px;">(⚠️confirmar nos PPI)</span></h3>
             <div id="details" class="means"></div>
             
@@ -252,7 +300,7 @@ const fmtKm = n => {
   return s.replace('.', ',').replace(/,000$/, '');
 };
 
-// Função auxiliar para expandir nomes para o Google Maps
+// Limpeza de nomes para mapa
 const cleanLocationForMaps = (name) => {
   if (!name) return '';
   return name
@@ -667,12 +715,57 @@ document.getElementById('search').addEventListener('click', ()=>{
   const res = lookupMeans(road, km, dir, type);
   renderResults(res, road, km, dir, type);
 
-  /* --- GERAÇÃO DOS BOTÕES DE AÇÃO --- */
+  // Limpa areas dinâmicas
   const btnGroup = document.getElementById('action-buttons');
-  btnGroup.innerHTML = ''; // Limpa botões antigos
+  const helpContainer = document.getElementById('help-container');
+  btnGroup.innerHTML = '';
+  helpContainer.innerHTML = '';
 
   if (road && res.interval && dir) {
-    // 1. Botão do PDF
+    // -------------------------------------
+    // 1. CÁLCULO DA ENTRADA E DIREÇÃO
+    // -------------------------------------
+    let entryKm;
+    let simpleDirName;
+    let arrowIcon;
+
+    if (dir === 'Sul/Norte') {
+      // Sentido Sul para Norte: Entra no Km mais baixo (início do intervalo)
+      entryKm = res.interval.start;
+      simpleDirName = 'NORTE';
+      arrowIcon = '⬆️';
+    } else {
+      // Sentido Norte para Sul: Entra no Km mais alto (fim do intervalo)
+      entryKm = res.interval.end;
+      simpleDirName = 'SUL';
+      arrowIcon = '⬇️';
+    }
+
+    // Tenta encontrar o nome do nó correspondente ao Km de entrada
+    const entryRef = DATA[road].references.find(r => Math.abs(r.km - entryKm) < 0.1);
+    const rawName = entryRef ? entryRef.name : road;
+    
+    // Limpa o nome para mapa (ex: M. Grande -> Marinha Grande)
+    const entryNameForMap = cleanLocationForMaps(rawName);
+
+    // -------------------------------------
+    // 2. VISUALIZAÇÃO GRÁFICA (O NOVO CARTÃO)
+    // -------------------------------------
+    helpContainer.innerHTML = `
+      <div class="help-graphic">
+        <div class="help-road">${road}</div>
+        <div style="font-size:12px; margin-bottom:5px;">Entrada Recomendada:</div>
+        <div class="help-entry">${rawName}</div>
+        <div class="help-arrow">${arrowIcon}</div>
+        <div class="help-dir">SENTIDO ${simpleDirName}</div>
+      </div>
+    `;
+
+    // -------------------------------------
+    // 3. BOTÕES (PDF e MAPA)
+    // -------------------------------------
+    
+    // Botão PDF
     const btnPdfLink = document.createElement('a');
     btnPdfLink.href = `${road}.pdf`;
     btnPdfLink.target = '_blank';
@@ -683,28 +776,9 @@ document.getElementById('search').addEventListener('click', ()=>{
     `;
     btnGroup.appendChild(btnPdfLink);
 
-    // 2. Lógica de entrada baseada no SENTIDO
-    let entryKm;
-    if (dir === 'Sul/Norte') {
-      // Sentido Sul para Norte: Entra no Km mais baixo (início do intervalo)
-      entryKm = res.interval.start;
-    } else {
-      // Sentido Norte para Sul: Entra no Km mais alto (fim do intervalo)
-      entryKm = res.interval.end;
-    }
-
-    // Tenta encontrar o nome do nó correspondente ao Km de entrada
-    const entryRef = DATA[road].references.find(r => Math.abs(r.km - entryKm) < 0.1);
-    const rawName = entryRef ? entryRef.name : road;
-    
-    // Limpa o nome (ex: M. Grande -> Marinha Grande)
-    const entryName = cleanLocationForMaps(rawName);
-    
+    // Botão Mapa
     // Cria string de busca para o Maps: "Portagem [Nome] [Estrada]"
-    // Este é o formato que o Google Maps entende melhor para entradas de AE
-    const mapsQuery = `Portagem ${entryName} ${road}`;
-    
-    // URL OFICIAL do Google Maps Search API
+    const mapsQuery = `Portagem ${entryNameForMap} ${road}`;
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`;
 
     const btnMapLink = document.createElement('a');
@@ -712,7 +786,7 @@ document.getElementById('search').addEventListener('click', ()=>{
     btnMapLink.target = '_blank';
     btnMapLink.innerHTML = `
       <button class="btn-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
-        🗺️ Mapa da Entrada (${entryName})
+        🗺️ Mapa da Entrada (${entryNameForMap})
       </button>
     `;
     btnGroup.appendChild(btnMapLink);
@@ -728,8 +802,9 @@ document.getElementById('clear').addEventListener('click', ()=>{
   document.getElementById('details').innerHTML='';
   document.getElementById('refs').innerHTML='';
   
-  // Limpa o grupo de botões
+  // Limpa as áreas dinâmicas
   document.getElementById('action-buttons').innerHTML = '';
+  document.getElementById('help-container').innerHTML = '';
   
   renderSVG('', null);
 });

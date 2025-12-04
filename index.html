@@ -3,6 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Added for fullscreen PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f1221">
+
   <title>Auto-Estradas|Concelho Leiria</title>
   <link rel="icon" href="favicon.ico">
   <style>
@@ -170,6 +175,7 @@
             </select>
           </div>
         </div>
+
         <div class="actions">
           <button id="search">Consultar</button>
           <button class="secondary" id="clear">Limpar</button>
@@ -208,7 +214,8 @@
     <div>SCh 2ª João Paulo Pereira</div>
     <div>Companhia Bombeiros Sapadores de Leiria</div>
     <div>- Versão 1.3 -</div>
-</footer>  </div>
+</footer>  
+  </div>
 
 <script>
 /* Utilitários */
@@ -265,7 +272,6 @@ const DATA = {
       }
     ]
   },
-
   A8: {
     references: [
       { name:'M. Grande Sul', km:123.200 },
@@ -613,11 +619,6 @@ function renderSVG(road, kmSel){
     label.textContent = `Km ${fmtKm(kmSel)}`;
     svg.appendChild(label);
   }
-
-  // Portagens (quando houver dados, desenhar em laranja)
-  // Exemplo de como adicionar (depois de ter os dados):
-  // const tolls = DATA[road].tolls || [];
-  // tolls.forEach(t => { ... desenhar ícone e label ... });
 }
 
 /* Ligações UI */
@@ -634,7 +635,7 @@ document.getElementById('km').addEventListener('input', ()=>{
 
 document.getElementById('search').addEventListener('click', ()=>{
   const road = document.getElementById('road').value;
-  const km = parseKm(document.getElementById('km').value);
+  const km = parseKm(document.getElementById('km').value;
   const dir = document.getElementById('dir').value;
   const type = document.getElementById('type').value;
 
@@ -655,6 +656,3 @@ document.getElementById('clear').addEventListener('click', ()=>{
 </script>
 </body>
 </html>
-
-
-

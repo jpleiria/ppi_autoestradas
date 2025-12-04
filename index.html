@@ -252,6 +252,14 @@ const fmtKm = n => {
   return s.replace('.', ',').replace(/,000$/, '');
 };
 
+// Função auxiliar para expandir nomes para o Google Maps
+const cleanLocationForMaps = (name) => {
+  if (!name) return '';
+  return name
+    .replace('M. Grande', 'Marinha Grande')
+    .replace('P. Mós', 'Porto de Mós');
+};
+
 /* Dataset estruturado a partir do documento */
 const DATA = {
   A1: {
@@ -686,12 +694,17 @@ document.getElementById('search').addEventListener('click', ()=>{
     }
 
     // Tenta encontrar o nome do nó correspondente ao Km de entrada
-    // Usa uma tolerância pequena (0.1) para garantir que encontra o float
     const entryRef = DATA[road].references.find(r => Math.abs(r.km - entryKm) < 0.1);
-    const entryName = entryRef ? entryRef.name : road; // Fallback para o nome da estrada
+    const rawName = entryRef ? entryRef.name : road;
     
-    // Cria string de busca para o Maps: "Nó [Nome] [Estrada]"
-    const mapsQuery = `Nó ${entryName} ${road}`;
+    // Limpa o nome (ex: M. Grande -> Marinha Grande)
+    const entryName = cleanLocationForMaps(rawName);
+    
+    // Cria string de busca para o Maps: "Portagem [Nome] [Estrada]"
+    // Este é o formato que o Google Maps entende melhor para entradas de AE
+    const mapsQuery = `Portagem ${entryName} ${road}`;
+    
+    // URL OFICIAL do Google Maps Search API
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`;
 
     const btnMapLink = document.createElement('a');

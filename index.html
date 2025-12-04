@@ -180,8 +180,7 @@
         <div class="viz">
           <div class="scale"><span id="scale-left">Km —</span><span id="scale-right">Km —</span></div>
           <svg id="svg" viewBox="0 0 1000 140" preserveAspectRatio="none" aria-label="Representação do troço">
-            <!-- Rendered dynamically -->
-          </svg>
+            </svg>
           <div class="legend">
             <span><span class="swatch swatch-ref"></span> Portagens</span>
             <span><span class="swatch swatch-km"></span> Km selecionado</span>
@@ -191,6 +190,9 @@
 
       <div class="card">
         <h2>Resultado 🚑🚒</h2>
+        
+        <div id="pdf-container" style="margin-bottom: 15px;"></div>
+        
         <div class="results">
           <div class="list">
             <h3>Meios a enviar</h3>
@@ -213,7 +215,7 @@
 <script>
 /* Utilitários */
 const normalizeUnit = s => s
-  .replace(/ASBC/gi,'ABSC')       // corrigir typos do documento
+  .replace(/ASBC/gi,'ABSC')
   .replace(/Sapdores/gi,'Sapadores')
   .trim();
 
@@ -613,11 +615,6 @@ function renderSVG(road, kmSel){
     label.textContent = `Km ${fmtKm(kmSel)}`;
     svg.appendChild(label);
   }
-
-  // Portagens (quando houver dados, desenhar em laranja)
-  // Exemplo de como adicionar (depois de ter os dados):
-  // const tolls = DATA[road].tolls || [];
-  // tolls.forEach(t => { ... desenhar ícone e label ... });
 }
 
 /* Ligações UI */
@@ -640,6 +637,23 @@ document.getElementById('search').addEventListener('click', ()=>{
 
   const res = lookupMeans(road, km, dir, type);
   renderResults(res, road, km, dir, type);
+
+  /* --- LOGICA ADICIONADA: EXIBIR BOTÃO PDF APENAS APÓS PESQUISA --- */
+  const pdfContainer = document.getElementById('pdf-container');
+  // Verifica se há uma estrada selecionada
+  if (road) {
+    // Cria o botão dinamicamente
+    pdfContainer.innerHTML = `
+      <a href="${road}.pdf" target="_blank" style="text-decoration:none;">
+        <button style="width:100%; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; display: flex; justify-content: center; align-items: center; gap: 8px;">
+          📄 Abrir PPI da ${road}
+        </button>
+      </a>
+    `;
+  } else {
+    // Se não houver estrada (erro na seleção), limpa
+    pdfContainer.innerHTML = '';
+  }
 });
 
 document.getElementById('clear').addEventListener('click', ()=>{
@@ -650,6 +664,10 @@ document.getElementById('clear').addEventListener('click', ()=>{
   document.getElementById('means').innerHTML='';
   document.getElementById('details').innerHTML='';
   document.getElementById('refs').innerHTML='';
+  
+  // Limpa também o botão do PDF
+  document.getElementById('pdf-container').innerHTML = '';
+  
   renderSVG('', null);
 });
 </script>

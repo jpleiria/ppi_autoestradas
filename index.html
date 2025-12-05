@@ -586,7 +586,7 @@ function renderResults({means, interval}, road, km, dir, type){
   });
 }
 
-/* Visualização SVG do troço */
+/* Visualização SVG do troço melhorada */
 function renderSVG(road, kmSel){
   const svg = document.getElementById('svg');
   const left = document.getElementById('scale-left');
@@ -600,15 +600,18 @@ function renderSVG(road, kmSel){
   const refs = [...DATA[road].references].sort((a,b)=>a.km-b.km);
   const startKm = refs[0]?.km ?? 0;
   const endKm = refs[refs.length-1]?.km ?? 0;
-  const pad = Math.max( (endKm - startKm) * 0.05, 0.5 );
+  
+  // Aumentei ligeiramente o padding (margem) para os textos das pontas não cortarem
+  const pad = Math.max( (endKm - startKm) * 0.10, 2 ); 
   const minKm = startKm - pad;
   const maxKm = endKm + pad;
 
   left.textContent = `Km ${fmtKm(minKm)}`;
   right.textContent = `Km ${fmtKm(maxKm)}`;
 
-  const W=1000, H=140, BASE_Y=80;
+  const W=1000, H=140, BASE_Y=90; // Baixei o eixo (era 80) para dar mais espaço em cima
 
+  // Linha da estrada
   const line = document.createElementNS('http://www.w3.org/2000/svg','rect');
   line.setAttribute('x', 40);
   line.setAttribute('y', BASE_Y-4);
@@ -623,66 +626,96 @@ function renderSVG(road, kmSel){
     return 40 + t * (W-80);
   };
 
-  // Referências
-  refs.forEach(r=>{
+  // --- Renderização das Referências (Portagens/Saídas) ---
+  refs.forEach((r, index)=>{
     const x = scaleX(r.km);
-    const tick = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    tick.setAttribute('x', x-1);
-    tick.setAttribute('y', BASE_Y-14);
-    tick.setAttribute('width', 2);
-    tick.setAttribute('height', 28);
-    tick.setAttribute('fill', '#7dd3fc');
-    svg.appendChild(tick);
+    
+    // LÓGICA DE ESCALONAMENTO (ZIG-ZAG)
+    // Usa o resto da divisão por 3 para criar 3 níveis de altura: 0, 1 e 2
+    const level = index % 3; 
+    
+    // Define a altura baseada no nível (quanto maior o nível, mais alto o texto)
+    const verticalOffset = 25 + (level * 20); // 25px, 45px, ou 65px acima da linha
 
+    // 1. Linha guia (conecta o ponto ao texto)
+    const guide = document.createElementNS('http://www.w3.org/2000/svg','line');
+    guide.setAttribute('x1', x);
+    guide.setAttribute('y1', BASE_Y); 
+    guide.setAttribute('x2', x);
+    guide.setAttribute('y2', BASE_Y - verticalOffset + 6); // Pára um pouco antes do texto
+    guide.setAttribute('stroke', 'rgba(125, 211, 252, 0.2)'); // Azul muito subtil
+    guide.setAttribute('stroke-width', '1');
+    if(level > 0) { // Só desenha a linha guia se o texto estiver afastado (níveis 1 e 2)
+        svg.appendChild(guide); 
+    }
+
+    // 2. O Ponto na estrada
     const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
     dot.setAttribute('cx', x);
     dot.setAttribute('cy', BASE_Y);
-    dot.setAttribute('r', 5);
-    dot.setAttribute('fill', '#7dd3fc');
-    dot.setAttribute('stroke', '#083344');
+    dot.setAttribute('r', 4);
+    dot.setAttribute('fill', '#0b0e1a'); // Interior escuro para contraste
+    dot.setAttribute('stroke', '#7dd3fc');
+    dot.setAttribute('stroke-width', '2');
     svg.appendChild(dot);
 
+    // 3. O Texto
     const label = document.createElementNS('http://www.w3.org/2000/svg','text');
     label.setAttribute('x', x);
-    label.setAttribute('y', BASE_Y-28);
+    label.setAttribute('y', BASE_Y - verticalOffset);
     label.setAttribute('fill', '#b9e6ff');
-    label.setAttribute('font-size','12');
+    label.setAttribute('font-size','11');
+    label.setAttribute('font-weight','500'); // Um pouco mais visível
     label.setAttribute('text-anchor','middle');
-    label.textContent = `${r.name} • Km ${fmtKm(r.km)}`;
+    // Adiciona uma sombra suave (stroke preto) para leitura se passar por cima de linhas
+    label.setAttribute('paint-order', 'stroke');
+    label.setAttribute('stroke', '#0b0e1a');
+    label.setAttribute('stroke-width', '2px');
+    label.setAttribute('stroke-linecap', 'butt');
+    label.setAttribute('stroke-linejoin', 'miter');
+    
+    label.textContent = `${r.name} • ${fmtKm(r.km)}`;
     svg.appendChild(label);
   });
 
-  // Km selecionado
+  // --- Renderização do Km Selecionado (Utilizador) ---
   if (kmSel != null){
     const x = scaleX(kmSel);
-    const marker = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    marker.setAttribute('x', x-2);
-    marker.setAttribute('y', BASE_Y-18);
-    marker.setAttribute('width', 4);
-    marker.setAttribute('height', 36);
+    
+    // Marcador visual (Pino)
+    const markerHeight = 25;
+    const marker = document.createElementNS('http://www.w3.org/2000/svg','path');
+    // Desenha um triangulo invertido apontando para o km
+    marker.setAttribute('d', `M${x} ${BASE_Y} L${x-5} ${BASE_Y+8} L${x+5} ${BASE_Y+8} Z`);
     marker.setAttribute('fill', '#22c55e');
     svg.appendChild(marker);
 
-    const pin = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    pin.setAttribute('cx', x);
-    pin.setAttribute('cy', BASE_Y);
-    pin.setAttribute('r', 6.5);
-    pin.setAttribute('fill', 'none');
-    pin.setAttribute('stroke', '#22c55e');
-    pin.setAttribute('stroke-width','2');
-    svg.appendChild(pin);
+    const lineDown = document.createElementNS('http://www.w3.org/2000/svg','line');
+    lineDown.setAttribute('x1', x);
+    lineDown.setAttribute('y1', BASE_Y+8);
+    lineDown.setAttribute('x2', x);
+    lineDown.setAttribute('y2', BASE_Y+35);
+    lineDown.setAttribute('stroke', '#22c55e');
+    lineDown.setAttribute('stroke-width', '1');
+    lineDown.setAttribute('stroke-dasharray', '2,2');
+    svg.appendChild(lineDown);
 
     const label = document.createElementNS('http://www.w3.org/2000/svg','text');
     label.setAttribute('x', x);
-    label.setAttribute('y', BASE_Y+28);
+    label.setAttribute('y', BASE_Y+45); // Texto bem abaixo da linha
     label.setAttribute('fill', '#86efac');
-    label.setAttribute('font-size','12');
+    label.setAttribute('font-size','13');
+    label.setAttribute('font-weight','700');
     label.setAttribute('text-anchor','middle');
-    label.textContent = `Km ${fmtKm(kmSel)}`;
+    // Sombra para contraste
+    label.setAttribute('paint-order', 'stroke');
+    label.setAttribute('stroke', '#0b0e1a');
+    label.setAttribute('stroke-width', '3px');
+    
+    label.textContent = `📍 Km ${fmtKm(kmSel)}`;
     svg.appendChild(label);
   }
 }
-
 /* Ligações UI */
 document.getElementById('road').addEventListener('change', e=>{
   const road = e.target.value;

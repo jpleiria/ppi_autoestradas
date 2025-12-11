@@ -294,16 +294,13 @@ const fmtKm = n => {
   return s.replace('.', ',').replace(/,000$/, '');
 };
 
-/* DATASET com Coordenadas GPS de "EIXO DE VIA".
-  Estas coordenadas apontam para o asfalto da autoestrada, 
-  garantindo que o Google Maps traça a rota pela via principal.
-*/
+/* DATASET com Coordenadas ATUALIZADAS. */
 const DATA = {
   A1: {
     references: [
-      { name:'Fátima', km:114.475, coords: '39.6156,-8.6648' },
-      { name:'Leiria', km:129.450, coords: '39.7317,-8.7663' },
-      { name:'Pombal', km:153.775, coords: '39.9142,-8.6111' }
+      { name:'Fátima', km:114.475, coords: '39.62760867313851, -8.68775647796845' },
+      { name:'Leiria', km:129.450, coords: '39.7379531004445, -8.745597794516033' },
+      { name:'Pombal', km:153.775, coords: '39.94000314174098, -8.674813194617416' }
     ],
     intervals: [
       {
@@ -336,11 +333,11 @@ const DATA = {
 
   A8: {
     references: [
-      { name:'M. Grande Sul', km:123.200, coords: '39.7145,-8.9333' },
-      { name:'M. Grande Este', km:128.400, coords: '39.7431,-8.9054' },
-      { name:'Leiria Sul', km:132.225, coords: '39.7123,-8.8245' },
-      { name:'Cortes', km:135.159, coords: '39.7225,-8.8037' },
-      { name:'Pousos', km:138.194, coords: '39.7408,-8.7849' }
+      { name:'M. Grande Sul', km:123.200, coords: '39.714182079635385, -8.918181352957347' },
+      { name:'M. Grande Este', km:128.400, coords: '39.74434645580255, -8.875719343745297' },
+      { name:'Leiria Sul', km:132.225, coords: '39.72894343664481, -8.830647558260477' },
+      { name:'Cortes', km:135.159, coords: '39.72420065528295, -8.799521220438482' },
+      { name:'Pousos', km:138.194, coords: '39.734980786127245, -8.772296148441152' }
     ],
     intervals: [
       { start:123.200, end:128.400, directions:{
@@ -396,12 +393,12 @@ const DATA = {
 
   A17: {
     references: [
-      { name:'Leiria Sul', km:0.000, coords: '39.7123,-8.8245' },
-      { name:'Leiria Norte', km:10.290, coords: '39.7616,-8.8718' },
-      { name:'Monte Real', km:14.675, coords: '39.8086,-8.8732' },
-      { name:'Monte Redondo', km:19.950, coords: '39.8551,-8.8688' },
-      { name:'Guia', km:26.450, coords: '39.9143,-8.8643' },
-      { name:'Louriçal', km:32.200, coords: '40.0028,-8.7881' },
+      { name:'Leiria Sul', km:0.000, coords: '39.74456612883926, -8.882784917339388' },
+      { name:'Leiria Norte', km:10.290, coords: '39.811830054269805, -8.842071033941064' },
+      { name:'Monte Real', km:14.675, coords: '39.85297009589286, -8.832719312587109' },
+      { name:'Monte Redondo', km:19.950, coords: '39.89333302666884, -8.810754662736409' },
+      { name:'Guia', km:26.450, coords: '39.94282892816954, -8.774451108067627' },
+      { name:'Louriçal', km:32.200, coords: '39.98936529453049, -8.791437202779084' },
     ],
     intervals: [
       { start:0.000, end:10.290, directions:{
@@ -469,10 +466,10 @@ const DATA = {
 
   A19: {
     references: [
-      { name:'Batalha', km:113.900, coords: '39.6547,-8.8239' },
-      { name:'Azóia', km:120.100, coords: '39.7043,-8.8158' },
-      { name:'Barosa', km:122.700, coords: '39.7269,-8.8091' },
-      { name:'Gândara', km:123.700, coords: '39.7347,-8.8073' },
+      { name:'Batalha', km:113.900, coords: '39.67266976547633, -8.84319408943474' },
+      { name:'Azóia', km:120.100, coords: '39.71754904010428, -8.83170475315113' },
+      { name:'Barosa', km:122.700, coords: '39.746679444735236, -8.818986759220678' },
+      { name:'Gândara', km:123.700, coords: '39.75307071240875, -8.816719400709633' },
     ],
     intervals: [
       { start:113.900, end:120.100, directions:{
@@ -746,22 +743,19 @@ document.getElementById('search').addEventListener('click', ()=>{
   if (road && res.interval && dir) {
     /* 1. CÁLCULO DA ENTRADA E DIREÇÃO */
     let entryKm, arrowIcon, simpleDirName;
-    let mapOriginKm, mapDestKm;
-
+    
+    // Define qual o Km de entrada baseado no sentido
     if (dir === 'Sul/Norte') {
       entryKm = res.interval.start;
       simpleDirName = 'NORTE';
       arrowIcon = '⬆️';
-      mapOriginKm = res.interval.start;
-      mapDestKm = res.interval.end;
     } else {
       entryKm = res.interval.end;
       simpleDirName = 'SUL';
       arrowIcon = '⬇️';
-      mapOriginKm = res.interval.end;
-      mapDestKm = res.interval.start;
     }
 
+    // Encontra o objeto de referência (Entrada) correspondente ao Km
     const entryRef = DATA[road].references.find(r => Math.abs(r.km - entryKm) < 0.1);
     const rawName = entryRef ? entryRef.name : road;
     
@@ -788,23 +782,22 @@ document.getElementById('search').addEventListener('click', ()=>{
     `;
     btnGroup.appendChild(btnPdfLink);
 
-    // Botão MAPA (Correção: Usar coordenadas diretas para forçar autoestrada)
-    const originRef = DATA[road].references.find(r => Math.abs(r.km - mapOriginKm) < 0.1);
-    const destRef = DATA[road].references.find(r => Math.abs(r.km - mapDestKm) < 0.1);
-
-    // Fallback: Se falhar a coordenada, usa o nome
-    let originParam = originRef ? (originRef.coords || originRef.name) : road;
-    let destParam = destRef ? (destRef.coords || destRef.name) : road;
-
-    // URL usando a API de Direções Universal da Google CORRIGIDA
-    const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${destParam}&travelmode=driving`;
+    // Botão MAPA (SIMPLIFICADO: APENAS MOSTRAR LOCALIZAÇÃO)
+    // Obtém coordenadas da entrada identificada
+    let destCoordsRaw = entryRef ? (entryRef.coords || entryRef.name) : road;
+    
+    // Limpar espaços para garantir link funcional
+    let destCoords = destCoordsRaw.replace(/\s/g, ''); 
+    
+    // URL simples para abrir mapa focado na coordenada
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${destCoords}`;
 
     const btnMapLink = document.createElement('a');
     btnMapLink.href = mapsUrl;
     btnMapLink.target = '_blank';
     btnMapLink.innerHTML = `
       <button class="btn-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
-        🗺️ Ver Rota (${rawName})
+        🗺️ Ver Mapa (${rawName})
       </button>
     `;
     btnGroup.appendChild(btnMapLink);

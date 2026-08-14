@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Auto-Estradas|Concelho Leiria</title>
   <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <style>
     :root{
       --bg:#0f1221;
@@ -110,11 +111,18 @@
     .scale{
       display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--border)
     }
-    svg{display:block;width:100%;height:140px;background:linear-gradient(180deg,#0e1226,#0b0e1a)}
+    #route-map{height:290px;background:#0e1226;z-index:0}
+    .map-message{height:100%;display:grid;place-items:center;padding:20px;color:var(--muted);text-align:center;font-size:14px}
+    .leaflet-container{font-family:inherit}
+    .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#151936;color:var(--text)}
+    .leaflet-popup-content{margin:10px 12px;font-size:13px}
+    .leaflet-control-zoom a{background:#151936!important;color:var(--text)!important;border-color:var(--border)!important}
+    .toll-icon{background:#f59e0b;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 5px rgba(0,0,0,.55)}
     .legend{display:flex;gap:12px;margin-top:10px;font-size:12px;color:var(--muted)}
     .legend .swatch{width:10px;height:10px;border-radius:2px;margin-right:6px;display:inline-block}
-    .swatch-ref{background:#7dd3fc}
+    .swatch-ref{background:#f59e0b}
     .swatch-km{background:#22c55e}
+    .swatch-route{background:#38bdf8}
     .swatch-toll{background:#f59e0b}
     footer{
       color:var(--muted);font-size:12px;text-align:center;margin-top:24px
@@ -238,12 +246,12 @@
         <div class="chips" id="refs"></div>
 
         <div class="viz">
-          <div class="scale"><span id="scale-left">Km —</span><span id="scale-right">Km —</span></div>
-          <svg id="svg" viewBox="0 0 1000 140" preserveAspectRatio="none" aria-label="Representação do troço">
-            </svg>
+          <div class="scale"><span id="scale-left">Selecione uma autoestrada</span><span id="scale-right">Base cartográfica OpenStreetMap</span></div>
+          <div id="route-map" aria-label="Mapa do troço de autoestrada"></div>
           <div class="legend">
             <span><span class="swatch swatch-ref"></span> Portagens</span>
             <span><span class="swatch swatch-km"></span> Km selecionado</span>
+            <span><span class="swatch swatch-route"></span> Trajeto rodoviário</span>
           </div>
         </div>
       </div>
@@ -276,6 +284,7 @@
     <div>- Versão 5.6 -</div>
 </footer>  </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 /* Utilitários */
 const normalizeUnit = s => s
@@ -584,8 +593,150 @@ function renderResults({means, interval}, road, km, dir, type){
   });
 }
 
-/* Visualização SVG do troço melhorada */
+/* Mapa do troço real: vias e cartografia vêm do OpenStreetMap. */
+let ppiMap;
+let mapMarkers;
+let roadLine;
+let occurrenceMarker;
+let mapRenderVersion = 0;
+const roadRouteCache = {};
+
+function refLatLng(ref){
+  const [lat, lng] = ref.coords.split(',').map(Number);
+  return [lat, lng];
+}
+
+function estimatedKmPosition(refs, km){
+  const first = refs[0], last = refs[refs.length - 1];
+  if (km <= first.km) return refLatLng(first);
+  if (km >= last.km) return refLatLng(last);
+  const after = refs.find(ref => ref.km >= km);
+  const before = refs[refs.indexOf(after) - 1];
+  const ratio = (km - before.km) / (after.km - before.km);
+  const [lat1, lng1] = refLatLng(before);
+  const [lat2, lng2] = refLatLng(after);
+  return [lat1 + (lat2 - lat1) * ratio, lng1 + (lng2 - lng1) * ratio];
+}
+
+function pointOnRoadGeometry(geometry, refs, km){
+  const coords = geometry.coordinates;
+  const ratio = Math.max(0, Math.min(1, (km - refs[0].km) / (refs[refs.length - 1].km - refs[0].km)));
+  const lengths = [0];
+  for (let i = 1; i < coords.length; i++) {
+    const [lng1, lat1] = coords[i - 1], [lng2, lat2] = coords[i];
+    const dx = (lng2 - lng1) * Math.cos(((lat1 + lat2) / 2) * Math.PI / 180);
+    const dy = lat2 - lat1;
+    lengths.push(lengths[i - 1] + Math.hypot(dx, dy));
+  }
+  const target = lengths[lengths.length - 1] * ratio;
+  const index = lengths.findIndex(length => length >= target);
+  if (index <= 0) return [coords[0][1], coords[0][0]];
+  const part = (target - lengths[index - 1]) / (lengths[index] - lengths[index - 1]);
+  const [lng1, lat1] = coords[index - 1], [lng2, lat2] = coords[index];
+  return [lat1 + (lat2 - lat1) * part, lng1 + (lng2 - lng1) * part];
+}
+
+async function drawRealRoadLine(road, refs, kmSel, renderVersion){
+  try {
+    let geometry = roadRouteCache[road];
+    if (!geometry) {
+      const coordinates = refs.map(ref => refLatLng(ref).reverse().join(',')).join(';');
+      const url = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=false`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Não foi possível obter a rota');
+      const data = await response.json();
+      geometry = data.routes?.[0]?.geometry;
+      if (!geometry) throw new Error('Geometria não disponível');
+      roadRouteCache[road] = geometry;
+    }
+    if (renderVersion !== mapRenderVersion || !ppiMap) return;
+    if (roadLine) roadLine.remove();
+    roadLine = L.geoJSON(geometry, {
+      style:{color:'#38bdf8', weight:6, opacity:.88, lineCap:'round', lineJoin:'round'},
+      interactive:false
+    }).addTo(ppiMap);
+    roadLine.bringToBack();
+    if (kmSel != null && occurrenceMarker) {
+      occurrenceMarker.setLatLng(pointOnRoadGeometry(geometry, refs, kmSel));
+      occurrenceMarker.setPopupContent(`<strong>Ocorrência</strong><br>${road} · Km ${fmtKm(kmSel)}<br><small>Posicionada sobre o trajeto rodoviário.</small>`);
+    }
+    document.getElementById('scale-right').textContent = 'Linha: trajeto rodoviário baseado em OpenStreetMap';
+  } catch (error) {
+    if (renderVersion === mapRenderVersion) {
+      if (occurrenceMarker) {
+        occurrenceMarker.remove();
+        occurrenceMarker = null;
+      }
+      document.getElementById('scale-right').textContent = 'Cartografia real disponível; não foi possível desenhar a linha do trajeto';
+    }
+  }
+}
+
+function renderMap(road, kmSel){
+  const mapEl = document.getElementById('route-map');
+  const left = document.getElementById('scale-left');
+  const right = document.getElementById('scale-right');
+  const renderVersion = ++mapRenderVersion;
+  left.textContent = 'Selecione uma autoestrada';
+  right.textContent = 'Base cartográfica OpenStreetMap';
+
+  if (!road || !DATA[road]) {
+    if (ppiMap) {
+      ppiMap.remove();
+      ppiMap = null;
+      mapMarkers = null;
+      roadLine = null;
+      occurrenceMarker = null;
+    }
+    mapEl.innerHTML = '<div class="map-message">Selecione uma autoestrada para ver o troço na cartografia real.</div>';
+    return;
+  }
+  if (!window.L) {
+    mapEl.innerHTML = '<div class="map-message">Não foi possível carregar o mapa. Verifique a ligação à internet e atualize a página.</div>';
+    return;
+  }
+  if (!ppiMap) {
+    mapEl.innerHTML = '';
+    ppiMap = L.map(mapEl, {scrollWheelZoom:true, zoomControl:true});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom:19,
+      attribution:'&copy; OpenStreetMap contributors'
+    }).addTo(ppiMap);
+  }
+  if (mapMarkers) mapMarkers.remove();
+  if (roadLine) {
+    roadLine.remove();
+    roadLine = null;
+  }
+  mapMarkers = L.featureGroup().addTo(ppiMap);
+  occurrenceMarker = null;
+
+  const refs = [...DATA[road].references].sort((a,b)=>a.km-b.km);
+  right.textContent = 'A desenhar o trajeto rodoviário…';
+  refs.forEach(ref => {
+    L.marker(refLatLng(ref), {
+      icon:L.divIcon({className:'toll-icon', iconSize:[14,14], iconAnchor:[7,7]})
+    }).bindPopup(`<strong>${ref.name}</strong><br>Referência PPI · Km ${fmtKm(ref.km)}`).addTo(mapMarkers);
+  });
+  if (kmSel != null) {
+    const position = estimatedKmPosition(refs, kmSel);
+    occurrenceMarker = L.circleMarker(position, {
+      radius:9, color:'#ffffff', weight:2, fillColor:'#22c55e', fillOpacity:1
+    }).bindPopup(`<strong>Ocorrência</strong><br>${road} · Km ${fmtKm(kmSel)}<br><small>A localizar sobre o trajeto rodoviário…</small>`).addTo(mapMarkers).openPopup();
+    left.textContent = `${road} · Km ${fmtKm(kmSel)}`;
+    right.textContent = 'Ocorrência: posição estimada entre referências PPI';
+  } else {
+    left.textContent = `${road} · Km ${fmtKm(refs[0].km)} — ${fmtKm(refs[refs.length - 1].km)}`;
+  }
+  drawRealRoadLine(road, refs, kmSel, renderVersion);
+  ppiMap.fitBounds(mapMarkers.getBounds(), {padding:[30,30], maxZoom:14});
+  setTimeout(() => ppiMap.invalidateSize(), 0);
+}
+
+/* Mantido o nome da função para preservar os eventos existentes. */
 function renderSVG(road, kmSel){
+  renderMap(road, kmSel);
+  return;
   const svg = document.getElementById('svg');
   const left = document.getElementById('scale-left');
   const right = document.getElementById('scale-right');
@@ -856,5 +1007,4 @@ document.getElementById('clear').addEventListener('click', ()=>{
 });
 </script>
 </body>
-
 </html>

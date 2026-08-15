@@ -108,9 +108,7 @@
     .viz{
       margin-top:8px;border:1px solid var(--border);border-radius:12px;overflow:hidden
     }
-    .scale{
-      display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--border)
-    }
+    .scale{display:none}
     #route-map{height:290px;background:#0e1226;z-index:0}
     .map-message{height:100%;display:grid;place-items:center;padding:20px;color:var(--muted);text-align:center;font-size:14px}
     .leaflet-container{font-family:inherit}
@@ -118,6 +116,7 @@
     .leaflet-popup-content{margin:10px 12px;font-size:13px}
     .leaflet-control-zoom a{background:#151936!important;color:var(--text)!important;border-color:var(--border)!important}
     .toll-icon{background:#f59e0b;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 5px rgba(0,0,0,.55)}
+    .selection-arrow{color:#000;font-size:44px;font-weight:900;line-height:1;text-align:center;text-shadow:0 2px 4px rgba(255,255,255,.9);pointer-events:none}
     .legend{display:flex;gap:12px;margin-top:10px;font-size:12px;color:var(--muted)}
     .legend .swatch{width:10px;height:10px;border-radius:2px;margin-right:6px;display:inline-block}
     .swatch-ref{background:#f59e0b}
@@ -308,9 +307,9 @@ const fmtKm = n => {
 const DATA = {
   A1: {
     references: [
-      { name:'Fátima', km:114.475, coords: '39.62760867313851, -8.68775647796845' },
-      { name:'Leiria', km:129.450, coords: '39.7379531004445, -8.745597794516033' },
-      { name:'Pombal', km:153.775, coords: '39.94000314174098, -8.674813194617416' }
+      { name:'Fátima', km:114.475, coords: '39.62760867313851, -8.68775647796845', mainCoords: '39.624044, -8.694707' },
+      { name:'Leiria', km:129.450, coords: '39.7379531004445, -8.745597794516033', mainCoords: '39.741359, -8.742588' },
+      { name:'Pombal', km:153.775, coords: '39.94000314174098, -8.674813194617416', mainCoords: '39.941625, -8.677269' }
     ],
     intervals: [
       {
@@ -343,11 +342,11 @@ const DATA = {
 
   A8: {
     references: [
-      { name:'M. Grande Sul', km:123.200, coords: '39.714182079635385, -8.918181352957347' },
-      { name:'M. Grande Este', km:128.400, coords: '39.74434645580255, -8.875719343745297' },
-      { name:'Leiria Sul', km:132.225, coords: '39.72894343664481, -8.830647558260477' },
-      { name:'Cortes', km:135.159, coords: '39.72420065528295, -8.799521220438482' },
-      { name:'Pousos', km:138.194, coords: '39.734980786127245, -8.772296148441152' }
+      { name:'M. Grande Sul', km:123.200, coords: '39.714182079635385, -8.918181352957347', mainCoords: '39.713153, -8.915159' },
+      { name:'M. Grande Este', km:128.400, coords: '39.74434645580255, -8.875719343745297', mainCoords: '39.742570, -8.875483' },
+      { name:'Leiria Sul', km:132.225, coords: '39.72894343664481, -8.830647558260477', mainCoords: '39.728999, -8.830586' },
+      { name:'Cortes', km:135.159, coords: '39.72420065528295, -8.799521220438482', mainCoords: '39.729076, -8.827854' },
+      { name:'Pousos', km:138.194, coords: '39.734980786127245, -8.772296148441152', mainCoords: '39.739071, -8.768870' }
     ],
     intervals: [
       { start:123.200, end:128.400, directions:{
@@ -403,12 +402,12 @@ const DATA = {
 
   A17: {
     references: [
-      { name:'Leiria Sul', km:0.000, coords: '39.74456612883926, -8.882784917339388' },
-      { name:'Leiria Norte', km:10.290, coords: '39.811830054269805, -8.842071033941064' },
-      { name:'Monte Real', km:14.675, coords: '39.85297009589286, -8.832719312587109' },
-      { name:'Monte Redondo', km:19.950, coords: '39.89333302666884, -8.810754662736409' },
-      { name:'Guia', km:26.450, coords: '39.94282892816954, -8.774451108067627' },
-      { name:'Louriçal', km:32.200, coords: '39.98936529453049, -8.791437202779084' },
+      { name:'Leiria Sul', km:0.000, coords: '39.74456612883926, -8.882784917339388', mainCoords: '39.742164, -8.870402' },
+      { name:'Leiria Norte', km:10.290, coords: '39.811830054269805, -8.842071033941064', mainCoords: '39.811819, -8.842027' },
+      { name:'Monte Real', km:14.675, coords: '39.85297009589286, -8.832719312587109', mainCoords: '39.850984, -8.828703' },
+      { name:'Monte Redondo', km:19.950, coords: '39.89333302666884, -8.810754662736409', mainCoords: '39.893309, -8.810674' },
+      { name:'Guia', km:26.450, coords: '39.94282892816954, -8.774451108067627', mainCoords: '39.942851, -8.774492' },
+      { name:'Louriçal', km:32.200, coords: '39.98936529453049, -8.791437202779084', mainCoords: '39.989373, -8.791432' },
     ],
     intervals: [
       { start:0.000, end:10.290, directions:{
@@ -476,10 +475,10 @@ const DATA = {
 
   A19: {
     references: [
-      { name:'Batalha', km:113.900, coords: '39.67266976547633, -8.84319408943474' },
-      { name:'Azóia', km:120.100, coords: '39.71754904010428, -8.83170475315113' },
-      { name:'Barosa', km:122.700, coords: '39.746679444735236, -8.818986759220678' },
-      { name:'Gândara', km:123.700, coords: '39.75307071240875, -8.816719400709633' },
+      { name:'Batalha', km:113.900, coords: '39.67266976547633, -8.84319408943474', mainCoords: '39.677058, -8.845160' },
+      { name:'Azóia', km:120.100, coords: '39.71754904010428, -8.83170475315113', mainCoords: '39.717544, -8.831750' },
+      { name:'Barosa', km:122.700, coords: '39.746679444735236, -8.818986759220678', mainCoords: '39.746686, -8.819062' },
+      { name:'Gândara', km:123.700, coords: '39.75307071240875, -8.816719400709633', mainCoords: '39.753085, -8.816778' },
     ],
     intervals: [
       { start:113.900, end:120.100, directions:{
@@ -598,29 +597,85 @@ let ppiMap;
 let mapMarkers;
 let roadLine;
 let occurrenceMarker;
+let selectionArrow;
 let mapRenderVersion = 0;
 const roadRouteCache = {};
+
+/* Geometria do eixo principal, sem acessos de portagem. As coordenadas estão
+   ordenadas pelo sentido crescente dos km e divididas pelas referências PPI. */
+const MAINLINE_PATHS = {
+  A1: [
+    [[-8.694707,39.624044],[-8.698091,39.630092],[-8.699083,39.641444],[-8.695377,39.657017],[-8.686189,39.670055],[-8.684116,39.681402],[-8.697435,39.700424],[-8.707530,39.707901],[-8.717736,39.727764],[-8.739727,39.741500],[-8.742588,39.741359]],
+    [[-8.742588,39.741359],[-8.748936,39.752640],[-8.743441,39.774356],[-8.737562,39.781820],[-8.735670,39.791420],[-8.722571,39.805991],[-8.722226,39.815952],[-8.717366,39.824447],[-8.721184,39.835158],[-8.717308,39.848230],[-8.707723,39.859959],[-8.700453,39.876793],[-8.689847,39.888519],[-8.690017,39.900067],[-8.680376,39.925948],[-8.679934,39.937265],[-8.677269,39.941625]]
+  ],
+  A8: [
+    [[-8.915159,39.713153],[-8.911010,39.719208],[-8.908150,39.720963],[-8.898092,39.724745],[-8.894455,39.726766],[-8.891699,39.729306],[-8.886321,39.736270],[-8.882795,39.739448],[-8.879781,39.741110],[-8.875483,39.742570]],
+    [[-8.875483,39.742570],[-8.871018,39.742792],[-8.867263,39.742545],[-8.863614,39.741594],[-8.860097,39.739918],[-8.856288,39.736743],[-8.852118,39.730507],[-8.848148,39.728569],[-8.836164,39.727078],[-8.830586,39.728999]],
+    [[-8.830586,39.728999],[-8.827854,39.729076]],
+    [[-8.827854,39.729076],[-8.819164,39.725757],[-8.814132,39.722550],[-8.810522,39.721885],[-8.801209,39.722641],[-8.792000,39.725000],[-8.783500,39.727000],[-8.776379,39.729308],[-8.773643,39.731573],[-8.771841,39.735573],[-8.768870,39.739071]]
+  ],
+  A17: [
+    [[-8.870402,39.742164],[-8.876514,39.752125],[-8.867880,39.781760],[-8.846000,39.802000],[-8.842027,39.811819]],
+    [[-8.842027,39.811819],[-8.833864,39.828309],[-8.835404,39.842312],[-8.828703,39.850984]],
+    [[-8.828703,39.850984],[-8.824727,39.860124],[-8.823403,39.873637],[-8.805945,39.894430],[-8.810674,39.893309]],
+    [[-8.810674,39.893309],[-8.803471,39.904789],[-8.794663,39.919704],[-8.782784,39.926254],[-8.771361,39.936894],[-8.774492,39.942851]],
+    [[-8.774492,39.942851],[-8.771397,39.951394],[-8.784126,39.980130],[-8.791432,39.989373]]
+  ],
+  A19: [
+    [[-8.845160,39.677058],[-8.847589,39.683093],[-8.847088,39.694792],[-8.845035,39.698251],[-8.836387,39.706103],[-8.835753,39.708916],[-8.836961,39.713548],[-8.836106,39.715608],[-8.831750,39.717544]],
+    [[-8.831750,39.717544],[-8.828491,39.727076],[-8.825598,39.730855],[-8.825086,39.734178],[-8.819711,39.739529],[-8.819062,39.746686]],
+    [[-8.819062,39.746686],[-8.816235,39.753894],[-8.816778,39.753085]]
+  ]
+};
 
 function refLatLng(ref){
   const [lat, lng] = ref.coords.split(',').map(Number);
   return [lat, lng];
 }
 
+function mainRoadLatLng(ref){
+  const [lat, lng] = (ref.mainCoords || ref.coords).split(',').map(Number);
+  return [lat, lng];
+}
+
+function clearSelectionArrow(){
+  if (selectionArrow) {
+    selectionArrow.remove();
+    selectionArrow = null;
+  }
+}
+
+function showSelectionArrow(latlng){
+  clearSelectionArrow();
+  selectionArrow = L.marker(latlng, {
+    interactive:false,
+    keyboard:false,
+    zIndexOffset:1000,
+    icon:L.divIcon({className:'selection-arrow', html:'↓', iconSize:[34,52], iconAnchor:[17,52]})
+  }).addTo(ppiMap);
+}
+
 function estimatedKmPosition(refs, km){
   const first = refs[0], last = refs[refs.length - 1];
-  if (km <= first.km) return refLatLng(first);
-  if (km >= last.km) return refLatLng(last);
+  if (km <= first.km) return mainRoadLatLng(first);
+  if (km >= last.km) return mainRoadLatLng(last);
   const after = refs.find(ref => ref.km >= km);
   const before = refs[refs.indexOf(after) - 1];
   const ratio = (km - before.km) / (after.km - before.km);
-  const [lat1, lng1] = refLatLng(before);
-  const [lat2, lng2] = refLatLng(after);
+  const [lat1, lng1] = mainRoadLatLng(before);
+  const [lat2, lng2] = mainRoadLatLng(after);
   return [lat1 + (lat2 - lat1) * ratio, lng1 + (lng2 - lng1) * ratio];
 }
 
-function pointOnRoadGeometry(geometry, refs, km){
-  const coords = geometry.coordinates;
-  const ratio = Math.max(0, Math.min(1, (km - refs[0].km) / (refs[refs.length - 1].km - refs[0].km)));
+function pointOnRoadGeometry(segments, refs, km){
+  const lastIndex = refs.length - 1;
+  const segmentIndex = Math.max(0, Math.min(lastIndex - 1,
+    refs.findIndex((ref, index) => index > 0 && km <= ref.km) - 1
+  ));
+  const startRef = refs[segmentIndex];
+  const endRef = refs[segmentIndex + 1];
+  const coords = segments[segmentIndex].coordinates;
+  const ratio = Math.max(0, Math.min(1, (km - startRef.km) / (endRef.km - startRef.km)));
   const lengths = [0];
   for (let i = 1; i < coords.length; i++) {
     const [lng1, lat1] = coords[i - 1], [lng2, lat2] = coords[i];
@@ -637,27 +692,54 @@ function pointOnRoadGeometry(geometry, refs, km){
 }
 
 async function drawRealRoadLine(road, refs, kmSel, renderVersion){
+  /* O eixo do mapa usa exclusivamente pontos na via principal. Não é usada
+     navegação automóvel, pois esta pode escolher rampas das portagens. */
+  const geometry = roadRouteCache[road] || {
+    type:'MultiLineString',
+    coordinates:MAINLINE_PATHS[road] || refs.slice(0, -1).map((ref, index) => [
+      mainRoadLatLng(ref).reverse(), mainRoadLatLng(refs[index + 1]).reverse()
+    ])
+  };
+  roadRouteCache[road] = geometry;
+  if (renderVersion !== mapRenderVersion || !ppiMap) return;
+  if (roadLine) roadLine.remove();
+  roadLine = L.geoJSON(geometry, {
+    style:{color:'#38bdf8', weight:6, opacity:.88, lineCap:'round', lineJoin:'round'},
+    interactive:false
+  }).addTo(ppiMap);
+  roadLine.bringToBack();
+  if (kmSel != null && occurrenceMarker) {
+    const segments = geometry.coordinates.map(coordinates => ({type:'LineString', coordinates}));
+    occurrenceMarker.setLatLng(pointOnRoadGeometry(segments, refs, kmSel));
+  }
+  document.getElementById('scale-right').textContent = 'Eixo principal: cálculo por quilometragem entre referências PPI';
+  return;
+
   try {
-    let geometry = roadRouteCache[road];
-    if (!geometry) {
-      const coordinates = refs.map(ref => refLatLng(ref).reverse().join(',')).join(';');
-      const url = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=false`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Não foi possível obter a rota');
-      const data = await response.json();
-      geometry = data.routes?.[0]?.geometry;
-      if (!geometry) throw new Error('Geometria não disponível');
-      roadRouteCache[road] = geometry;
+    let segments = roadRouteCache[road];
+    if (!segments) {
+      segments = await Promise.all(refs.slice(0, -1).map(async (ref, index) => {
+        const from = mainRoadLatLng(ref).reverse().join(',');
+        const to = mainRoadLatLng(refs[index + 1]).reverse().join(',');
+        const url = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${from};${to}?overview=full&geometries=geojson&steps=false`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Não foi possível obter a rota');
+        const data = await response.json();
+        const geometry = data.routes?.[0]?.geometry;
+        if (!geometry) throw new Error('Geometria não disponível');
+        return geometry;
+      }));
+      roadRouteCache[road] = segments;
     }
     if (renderVersion !== mapRenderVersion || !ppiMap) return;
     if (roadLine) roadLine.remove();
-    roadLine = L.geoJSON(geometry, {
+    roadLine = L.geoJSON({type:'MultiLineString', coordinates:segments.map(segment => segment.coordinates)}, {
       style:{color:'#38bdf8', weight:6, opacity:.88, lineCap:'round', lineJoin:'round'},
       interactive:false
     }).addTo(ppiMap);
     roadLine.bringToBack();
     if (kmSel != null && occurrenceMarker) {
-      occurrenceMarker.setLatLng(pointOnRoadGeometry(geometry, refs, kmSel));
+      occurrenceMarker.setLatLng(pointOnRoadGeometry(segments, refs, kmSel));
       occurrenceMarker.setPopupContent(`<strong>Ocorrência</strong><br>${road} · Km ${fmtKm(kmSel)}<br><small>Posicionada sobre o trajeto rodoviário.</small>`);
     }
     document.getElementById('scale-right').textContent = 'Linha: trajeto rodoviário baseado em OpenStreetMap';
@@ -687,6 +769,7 @@ function renderMap(road, kmSel){
       mapMarkers = null;
       roadLine = null;
       occurrenceMarker = null;
+      selectionArrow = null;
     }
     mapEl.innerHTML = '<div class="map-message">Selecione uma autoestrada para ver o troço na cartografia real.</div>';
     return;
@@ -698,12 +781,14 @@ function renderMap(road, kmSel){
   if (!ppiMap) {
     mapEl.innerHTML = '';
     ppiMap = L.map(mapEl, {scrollWheelZoom:true, zoomControl:true});
+    ppiMap.on('zoomstart', clearSelectionArrow);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom:19,
       attribution:'&copy; OpenStreetMap contributors'
     }).addTo(ppiMap);
   }
   if (mapMarkers) mapMarkers.remove();
+  clearSelectionArrow();
   if (roadLine) {
     roadLine.remove();
     roadLine = null;
@@ -722,7 +807,7 @@ function renderMap(road, kmSel){
     const position = estimatedKmPosition(refs, kmSel);
     occurrenceMarker = L.circleMarker(position, {
       radius:9, color:'#ffffff', weight:2, fillColor:'#22c55e', fillOpacity:1
-    }).bindPopup(`<strong>Ocorrência</strong><br>${road} · Km ${fmtKm(kmSel)}<br><small>A localizar sobre o trajeto rodoviário…</small>`).addTo(mapMarkers).openPopup();
+    }).addTo(mapMarkers);
     left.textContent = `${road} · Km ${fmtKm(kmSel)}`;
     right.textContent = 'Ocorrência: posição estimada entre referências PPI';
   } else {
@@ -730,6 +815,7 @@ function renderMap(road, kmSel){
   }
   drawRealRoadLine(road, refs, kmSel, renderVersion);
   ppiMap.fitBounds(mapMarkers.getBounds(), {padding:[30,30], maxZoom:14});
+  if (occurrenceMarker) showSelectionArrow(occurrenceMarker.getLatLng());
   setTimeout(() => ppiMap.invalidateSize(), 0);
 }
 
@@ -885,6 +971,11 @@ document.getElementById('search').addEventListener('click', ()=>{
 
   const res = lookupMeans(road, km, dir, type);
   renderResults(res, road, km, dir, type);
+
+  // Reapresenta a seta sem alterar a posição nem o nível de zoom do mapa.
+  if (road && km != null && ppiMap && occurrenceMarker) {
+    showSelectionArrow(occurrenceMarker.getLatLng());
+  }
 
   // Limpa areas dinâmicas
   const btnGroup = document.getElementById('action-buttons');

@@ -190,6 +190,16 @@
       padding-top: 5px;
       width: 100%;
     }
+    .reversal-notice{
+      margin-top:12px;background:linear-gradient(135deg,#7c2d12,#c2410c);
+      border:1px solid #fdba74;border-radius:10px;padding:12px;color:#fff;
+      font-size:13px;line-height:1.45
+    }
+    .reversal-notice strong{display:block;font-size:14px;margin-bottom:4px}
+    .map-reversal-alert{
+      display:none;margin:10px 10px 0;padding:9px 11px;border-radius:8px;
+      background:#7f1d1d;border:1px solid #f87171;color:#fff;font-size:12px;line-height:1.4
+    }
   </style>
 </head>
 <body>
@@ -247,10 +257,12 @@
         <div class="viz">
           <div class="scale"><span id="scale-left">Selecione uma autoestrada</span><span id="scale-right">Base cartográfica OpenStreetMap</span></div>
           <div id="route-map" aria-label="Mapa do troço de autoestrada"></div>
+          <div id="map-reversal-alert" class="map-reversal-alert"><strong>⚠️ Inversão de marcha na Estação Serviço Leiria (Km 125,6).</strong> Entrar em Leiria no sentido N/S e inverter para seguir S/N.</div>
           <div class="legend">
             <span><span class="swatch swatch-ref"></span> Portagens</span>
             <span><span class="swatch swatch-km"></span> Km selecionado</span>
             <span><span class="swatch swatch-route"></span> Trajeto rodoviário</span>
+            <span id="reversal-legend" style="display:none"><span class="swatch" style="background:#ef4444"></span> Ponto de inversão de marcha</span>
           </div>
         </div>
       </div>
@@ -280,7 +292,7 @@
 <footer class="rodape">
     <div>SCh 2ª João Paulo Pereira</div>
     <div>Companhia Bombeiros Sapadores de Leiria</div>
-    <div>- Versão 6.1 -</div>
+    <div>- Versão 6.2 -</div>
 </footer>  </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -548,6 +560,17 @@ function lookupMeans(road, km, dir, type){
   const interval = findInterval(road, km);
   if (!interval) return {means:[], interval:null};
 
+  // No troço com inversão na ES de Leiria, os meios são os definidos para
+  // uma ocorrência no mesmo km no sentido N/S.
+  if (requiresLeiriaReversal(road, km, dir)) {
+    const arr = interval.directions['Norte/Sul']?.[type];
+    return {
+      means: Array.isArray(arr) ? arr : [],
+      interval,
+      usesNorthSouthMeans: true
+    };
+  }
+
   const dirBlock = interval.directions[dir];
   if (!dirBlock) return {means:[], interval};
 
@@ -555,8 +578,15 @@ function lookupMeans(road, km, dir, type){
   return {means: Array.isArray(arr) ? arr : [], interval};
 }
 
+/* A área de serviço de Leiria (Km 125,6) permite a passagem controlada
+   entre sentidos. Esta regra aplica-se aos meios que entram por Leiria para
+   ocorrências S/N entre a estação de serviço e a saída de Leiria. */
+function requiresLeiriaReversal(road, km, dir){
+  return road === 'A1' && dir === 'Sul/Norte' && km >= 125.600 && km < 129.450;
+}
+
 /* Render resultado */
-function renderResults({means, interval}, road, km, dir, type){
+function renderResults({means, interval, usesNorthSouthMeans = false}, road, km, dir, type){
   const meansEl = document.getElementById('means');
   const detailsEl = document.getElementById('details');
   meansEl.innerHTML = '';
@@ -583,6 +613,9 @@ function renderResults({means, interval}, road, km, dir, type){
     {label:'Tipo de Ocorrência', value: type || '—'},
     {label:'Intervalo aplicado', value: interval ? `Km ${fmtKm(interval.start)} — ${fmtKm(interval.end)}` : '—'},
   ];
+  if (usesNorthSouthMeans) {
+    info.push({label:'Meios aplicados', value:'Os mesmos do sentido N/S no mesmo km'});
+  }
 
   info.forEach(i=>{
     const row = document.createElement('div');
@@ -598,6 +631,7 @@ let mapMarkers;
 let roadLine;
 let occurrenceMarker;
 let selectionArrow;
+let reversalRoute;
 let mapRenderVersion = 0;
 const roadRouteCache = {};
 
@@ -643,6 +677,22 @@ function clearSelectionArrow(){
     selectionArrow.remove();
     selectionArrow = null;
   }
+}
+
+function clearReversalRoute(){
+  if (reversalRoute) {
+    reversalRoute.remove();
+    reversalRoute = null;
+  }
+}
+
+function drawLeiriaReversalRoute(){
+  if (!ppiMap) return;
+  clearReversalRoute();
+  reversalRoute = L.circleMarker([39.71160,-8.71484], {
+    radius:10, color:'#ffffff', weight:2, fillColor:'#ef4444', fillOpacity:1
+  }).addTo(ppiMap);
+  reversalRoute.bindPopup('<strong>Inversão de marcha — Estação Serviço Leiria (Km 125,6)</strong><br>Entrar em Leiria no sentido N/S e inverter para seguir S/N.');
 }
 
 function showSelectionArrow(latlng){
@@ -759,6 +809,9 @@ function renderMap(road, kmSel){
   const left = document.getElementById('scale-left');
   const right = document.getElementById('scale-right');
   const renderVersion = ++mapRenderVersion;
+  const showLeiriaReversal = requiresLeiriaReversal(road, kmSel, document.getElementById('dir').value);
+  document.getElementById('reversal-legend').style.display = showLeiriaReversal ? 'inline' : 'none';
+  document.getElementById('map-reversal-alert').style.display = showLeiriaReversal ? 'block' : 'none';
   left.textContent = 'Selecione uma autoestrada';
   right.textContent = 'Base cartográfica OpenStreetMap';
 
@@ -769,7 +822,8 @@ function renderMap(road, kmSel){
       mapMarkers = null;
       roadLine = null;
       occurrenceMarker = null;
-      selectionArrow = null;
+    selectionArrow = null;
+      reversalRoute = null;
     }
     mapEl.innerHTML = '<div class="map-message">Selecione uma autoestrada para ver o troço na cartografia real.</div>';
     return;
@@ -789,6 +843,7 @@ function renderMap(road, kmSel){
   }
   if (mapMarkers) mapMarkers.remove();
   clearSelectionArrow();
+  clearReversalRoute();
   if (roadLine) {
     roadLine.remove();
     roadLine = null;
@@ -814,6 +869,9 @@ function renderMap(road, kmSel){
     left.textContent = `${road} · Km ${fmtKm(refs[0].km)} — ${fmtKm(refs[refs.length - 1].km)}`;
   }
   drawRealRoadLine(road, refs, kmSel, renderVersion);
+  if (showLeiriaReversal) {
+    drawLeiriaReversalRoute();
+  }
   ppiMap.fitBounds(mapMarkers.getBounds(), {padding:[30,30], maxZoom:14});
   if (occurrenceMarker) showSelectionArrow(occurrenceMarker.getLatLng());
   setTimeout(() => ppiMap.invalidateSize(), 0);
@@ -963,6 +1021,11 @@ document.getElementById('km').addEventListener('input', ()=>{
   renderSVG(road, parseKm(document.getElementById('km').value));
 });
 
+document.getElementById('dir').addEventListener('change', ()=>{
+  const road = document.getElementById('road').value;
+  renderSVG(road, parseKm(document.getElementById('km').value));
+});
+
 document.getElementById('search').addEventListener('click', ()=>{
   const road = document.getElementById('road').value;
   const km = parseKm(document.getElementById('km').value);
@@ -971,6 +1034,8 @@ document.getElementById('search').addEventListener('click', ()=>{
 
   const res = lookupMeans(road, km, dir, type);
   renderResults(res, road, km, dir, type);
+  // Atualiza o mapa após conhecer o sentido, para exibir a inversão na ES Leiria.
+  renderSVG(road, km);
 
   // Reapresenta a seta sem alterar a posição nem o nível de zoom do mapa.
   if (road && km != null && ppiMap && occurrenceMarker) {
@@ -986,6 +1051,7 @@ document.getElementById('search').addEventListener('click', ()=>{
   if (road && res.interval && dir) {
     /* 1. CÁLCULO DA ENTRADA E DIREÇÃO */
     let entryKm, arrowIcon, simpleDirName;
+    const leiriaReversal = requiresLeiriaReversal(road, km, dir);
     
     // Define qual o Km de entrada baseado no sentido
     if (dir === 'Sul/Norte') {
@@ -996,6 +1062,13 @@ document.getElementById('search').addEventListener('click', ()=>{
       entryKm = res.interval.end;
       simpleDirName = 'SUL';
       arrowIcon = '⬇️';
+    }
+
+    // Exceção operacional: acesso por Leiria e inversão na ES de Leiria.
+    if (leiriaReversal) {
+      entryKm = 129.450;
+      simpleDirName = 'N/S → S/N';
+      arrowIcon = '↪️';
     }
 
     // Encontra o objeto de referência (Entrada) correspondente ao Km
@@ -1011,6 +1084,11 @@ document.getElementById('search').addEventListener('click', ()=>{
         <div class="help-arrow">${arrowIcon}</div>
         <div class="help-dir">SENTIDO ${simpleDirName}</div>
       </div>
+      ${leiriaReversal ? `
+        <div class="reversal-notice">
+          <strong>⚠️ Inversão de sentido obrigatória — ES Leiria (Km 125,6)</strong>
+          Entrar pela entrada de Leiria no sentido N/S, utilizar o circuito da estação de serviço para inverter a marcha e seguir no sentido S/N até à ocorrência. O percurso está assinalado a amarelo no mapa. Os meios a enviar são os definidos para o mesmo km no sentido N/S.
+        </div>` : ''}
     `;
 
     /* 3. BOTÕES (PDF e MAPA ROTA GPS) */
@@ -1047,7 +1125,8 @@ document.getElementById('search').addEventListener('click', ()=>{
 
     /* 4. BOTÃO COPIAR (CLIPBOARD) */
     const meiosTexto = res.means.length > 0 ? res.means.join(', ') : 'Sem meios definidos';
-    const textoParaCopiar = `🚨 OCORRÊNCIA\n🛣️ ${road} Km ${fmtKm(km)}\n${arrowIcon} Sentido: ${simpleDirName}\n📍 Entrada: ${rawName}\n🚒 Meios: ${meiosTexto}`;
+    const notaInversao = leiriaReversal ? '\n⚠️ Inverter o sentido na ES Leiria (Km 125,6): entrar N/S e seguir S/N. Meios iguais aos do mesmo km no sentido N/S.' : '';
+    const textoParaCopiar = `🚨 OCORRÊNCIA\n🛣️ ${road} Km ${fmtKm(km)}\n${arrowIcon} Sentido: ${simpleDirName}\n📍 Entrada: ${rawName}${notaInversao}\n🚒 Meios: ${meiosTexto}`;
 
     const btnCopy = document.createElement('button');
     btnCopy.className = 'secondary';

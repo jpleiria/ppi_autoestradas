@@ -633,6 +633,7 @@ let occurrenceMarker;
 let selectionArrow;
 let reversalRoute;
 let mapRenderVersion = 0;
+let renderedRoad = null;
 const roadRouteCache = {};
 
 /* Geometria do eixo principal, sem acessos de portagem. As coordenadas estão
@@ -822,8 +823,9 @@ function renderMap(road, kmSel){
       mapMarkers = null;
       roadLine = null;
       occurrenceMarker = null;
-    selectionArrow = null;
+      selectionArrow = null;
       reversalRoute = null;
+      renderedRoad = null;
     }
     mapEl.innerHTML = '<div class="map-message">Selecione uma autoestrada para ver o troço na cartografia real.</div>';
     return;
@@ -832,6 +834,7 @@ function renderMap(road, kmSel){
     mapEl.innerHTML = '<div class="map-message">Não foi possível carregar o mapa. Verifique a ligação à internet e atualize a página.</div>';
     return;
   }
+  const roadChanged = renderedRoad !== road;
   if (!ppiMap) {
     mapEl.innerHTML = '';
     ppiMap = L.map(mapEl, {scrollWheelZoom:true, zoomControl:true});
@@ -872,7 +875,12 @@ function renderMap(road, kmSel){
   if (showLeiriaReversal) {
     drawLeiriaReversalRoute();
   }
-  ppiMap.fitBounds(mapMarkers.getBounds(), {padding:[30,30], maxZoom:14});
+  // Só centra automaticamente ao abrir ou trocar de autoestrada. Assim, a
+  // consulta não altera o zoom/enquadramento ajustado manualmente.
+  if (roadChanged) {
+    ppiMap.fitBounds(mapMarkers.getBounds(), {padding:[30,30], maxZoom:14});
+  }
+  renderedRoad = road;
   if (occurrenceMarker) showSelectionArrow(occurrenceMarker.getLatLng());
   setTimeout(() => ppiMap.invalidateSize(), 0);
 }
@@ -1034,8 +1042,6 @@ document.getElementById('search').addEventListener('click', ()=>{
 
   const res = lookupMeans(road, km, dir, type);
   renderResults(res, road, km, dir, type);
-  // Atualiza o mapa após conhecer o sentido, para exibir a inversão na ES Leiria.
-  renderSVG(road, km);
 
   // Reapresenta a seta sem alterar a posição nem o nível de zoom do mapa.
   if (road && km != null && ppiMap && occurrenceMarker) {

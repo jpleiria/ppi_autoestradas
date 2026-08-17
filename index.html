@@ -200,6 +200,10 @@
       display:none;margin:10px 10px 0;padding:9px 11px;border-radius:8px;
       background:#7f1d1d;border:1px solid #f87171;color:#fff;font-size:12px;line-height:1.4
     }
+    .intervention-alert{
+      display:none;margin:10px 10px 0;padding:10px 12px;border-radius:8px;
+      background:#7f1d1d;border:1px solid #f87171;color:#fff;font-size:13px;line-height:1.4
+    }
   </style>
 </head>
 <body>
@@ -258,6 +262,7 @@
           <div class="scale"><span id="scale-left">Selecione uma autoestrada</span><span id="scale-right">Base cartográfica OpenStreetMap</span></div>
           <div id="route-map" aria-label="Mapa do troço de autoestrada"></div>
           <div id="map-reversal-alert" class="map-reversal-alert"><strong>⚠️ Inversão de marcha na Estação Serviço Leiria (Km 125,6).</strong> Entrar em Leiria no sentido N/S e inverter para seguir S/N.</div>
+          <div id="intervention-alert" class="intervention-alert" role="alert"><strong>⚠️ Fora da intervenção do Município de Leiria.</strong><br>Meios a enviar fora do Município.</div>
           <div class="legend">
             <span><span class="swatch swatch-ref"></span> Portagens</span>
             <span><span class="swatch swatch-km"></span> Km selecionado</span>
@@ -550,6 +555,32 @@ function renderReferences(road){
 }
 
 /* Encontrar intervalo para um km */
+function interventionRange(road){
+  if (!road || !DATA[road]) return null;
+  const intervals = DATA[road].intervals;
+  return {
+    start: Math.min(...intervals.map(interval => interval.start)),
+    end: Math.max(...intervals.map(interval => interval.end))
+  };
+}
+
+function isWithinIntervention(road, km){
+  if (km == null) return false;
+  const range = interventionRange(road);
+  return Boolean(range && km >= range.start && km <= range.end);
+}
+
+function clearRecommendationsOutsideIntervention(){
+  const meansEl = document.getElementById('means');
+  const detailsEl = document.getElementById('details');
+  const btnGroup = document.getElementById('action-buttons');
+  const helpContainer = document.getElementById('help-container');
+  meansEl.innerHTML = '<div class="empty">Fora da intervenção do Município de Leiria - Meios a enviar fora do Município</div>';
+  detailsEl.innerHTML = '';
+  if (btnGroup) btnGroup.innerHTML = '';
+  if (helpContainer) helpContainer.innerHTML = '';
+}
+
 function findInterval(road, km){
   if (!road || km==null || !DATA[road]) return null;
   return DATA[road].intervals.find(i => km >= i.start && km < i.end) || null;
@@ -557,25 +588,36 @@ function findInterval(road, km){
 
 /* Consultar meios */
 function lookupMeans(road, km, dir, type){
+  const hasCompleteSelection = Boolean(road && km != null && dir && type);
+  if (road && km != null && !isWithinIntervention(road, km)) {
+    return {means:[], interval:null, outsideIntervention:true};
+  }
   const interval = findInterval(road, km);
-  if (!interval) return {means:[], interval:null};
+  if (!interval) return {means:[], interval:null, outsideIntervention:hasCompleteSelection};
 
   // No troço com inversão na ES de Leiria, os meios são os definidos para
   // uma ocorrência no mesmo km no sentido N/S.
   if (requiresLeiriaReversal(road, km, dir)) {
     const arr = interval.directions['Norte/Sul']?.[type];
+    const means = Array.isArray(arr) ? arr : [];
     return {
-      means: Array.isArray(arr) ? arr : [],
-      interval,
+      means,
+      interval: means.length ? interval : null,
+      outsideIntervention: means.length === 0 && hasCompleteSelection,
       usesNorthSouthMeans: true
     };
   }
 
   const dirBlock = interval.directions[dir];
-  if (!dirBlock) return {means:[], interval};
+  if (!dirBlock) return {means:[], interval:null, outsideIntervention:hasCompleteSelection};
 
   const arr = dirBlock[type];
-  return {means: Array.isArray(arr) ? arr : [], interval};
+  const means = Array.isArray(arr) ? arr : [];
+  return {
+    means,
+    interval: means.length ? interval : null,
+    outsideIntervention: means.length === 0 && hasCompleteSelection
+  };
 }
 
 /* A área de serviço de Leiria (Km 125,6) permite a passagem controlada
@@ -586,13 +628,19 @@ function requiresLeiriaReversal(road, km, dir){
 }
 
 /* Render resultado */
-function renderResults({means, interval, usesNorthSouthMeans = false}, road, km, dir, type){
+function renderResults({means, interval, usesNorthSouthMeans = false, outsideIntervention = false}, road, km, dir, type){
   const meansEl = document.getElementById('means');
   const detailsEl = document.getElementById('details');
   meansEl.innerHTML = '';
   detailsEl.innerHTML = '';
 
-  if (means.length === 0){
+  if (outsideIntervention) {
+    document.getElementById('intervention-alert').style.display = 'block';
+    const p = document.createElement('div');
+    p.className='empty';
+    p.textContent = 'Fora da intervenção do Município de Leiria - Meios a enviar fora do Município';
+    meansEl.appendChild(p);
+  } else if (means.length === 0){
     const p = document.createElement('div');
     p.className='empty';
     p.textContent = 'Sem dados para a combinação selecionada.';
@@ -810,7 +858,12 @@ function renderMap(road, kmSel){
   const left = document.getElementById('scale-left');
   const right = document.getElementById('scale-right');
   const renderVersion = ++mapRenderVersion;
-  const showLeiriaReversal = requiresLeiriaReversal(road, kmSel, document.getElementById('dir').value);
+  const kmIsInIntervention = isWithinIntervention(road, kmSel);
+  const mapKm = kmIsInIntervention ? kmSel : null;
+  const outsideIntervention = Boolean(road && kmSel != null && !kmIsInIntervention);
+  document.getElementById('intervention-alert').style.display = outsideIntervention ? 'block' : 'none';
+  if (outsideIntervention) clearRecommendationsOutsideIntervention();
+  const showLeiriaReversal = requiresLeiriaReversal(road, mapKm, document.getElementById('dir').value);
   document.getElementById('reversal-legend').style.display = showLeiriaReversal ? 'inline' : 'none';
   document.getElementById('map-reversal-alert').style.display = showLeiriaReversal ? 'block' : 'none';
   left.textContent = 'Selecione uma autoestrada';
@@ -861,17 +914,20 @@ function renderMap(road, kmSel){
       icon:L.divIcon({className:'toll-icon', iconSize:[14,14], iconAnchor:[7,7]})
     }).bindPopup(`<strong>${ref.name}</strong><br>Referência PPI · Km ${fmtKm(ref.km)}`).addTo(mapMarkers);
   });
-  if (kmSel != null) {
-    const position = estimatedKmPosition(refs, kmSel);
+  if (mapKm != null) {
+    const position = estimatedKmPosition(refs, mapKm);
     occurrenceMarker = L.circleMarker(position, {
       radius:9, color:'#ffffff', weight:2, fillColor:'#22c55e', fillOpacity:1
     }).addTo(mapMarkers);
-    left.textContent = `${road} · Km ${fmtKm(kmSel)}`;
+    left.textContent = `${road} · Km ${fmtKm(mapKm)}`;
     right.textContent = 'Ocorrência: posição estimada entre referências PPI';
+  } else if (kmSel != null) {
+    left.textContent = `${road} · Km ${fmtKm(kmSel)}`;
+    right.textContent = 'Fora da intervenção do Município de Leiria';
   } else {
     left.textContent = `${road} · Km ${fmtKm(refs[0].km)} — ${fmtKm(refs[refs.length - 1].km)}`;
   }
-  drawRealRoadLine(road, refs, kmSel, renderVersion);
+  drawRealRoadLine(road, refs, mapKm, renderVersion);
   if (showLeiriaReversal) {
     drawLeiriaReversalRoute();
   }
@@ -1040,6 +1096,9 @@ document.getElementById('search').addEventListener('click', ()=>{
   const dir = document.getElementById('dir').value;
   const type = document.getElementById('type').value;
 
+  // Garante que uma pesquisa também remove o marcador se o km estiver fora
+  // do troço de intervenção, mesmo sem uma alteração prévia no campo.
+  renderSVG(road, km);
   const res = lookupMeans(road, km, dir, type);
   renderResults(res, road, km, dir, type);
 

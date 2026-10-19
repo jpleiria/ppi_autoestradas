@@ -269,7 +269,7 @@
           <div class="scale"><span id="scale-left">Selecione uma autoestrada</span><span id="scale-right">Base cartográfica OpenStreetMap</span></div>
           <div id="route-map" aria-label="Mapa do troço de autoestrada"></div>
           <div id="map-precision" class="map-precision" style="display:none">📍 Posição aproximada do km, estimada entre referências PPI. Confirme a localização antes de utilizar.</div>
-          <div id="map-reversal-alert" class="map-reversal-alert"><strong>⚠️ Inversão de marcha na Estação Serviço Leiria (Km 125,6).</strong> Entrar em Leiria no sentido N/S e inverter para seguir S/N.</div>
+          <div id="map-reversal-alert" class="map-reversal-alert"><strong>⚠️ Inversão de marcha na Estação Serviço Leiria (Km 125,6).</strong> O traço amarelo representa o percurso entre as duas áreas de serviço. É esquemático; confirme a manobra no PPI.</div>
           <div id="intervention-alert" class="intervention-alert" role="alert"><strong>⚠️ Fora da intervenção do Município de Leiria.</strong><br>Meios a enviar fora do Município.</div>
           <div class="legend">
             <span id="overview-legend" style="display:none">
@@ -283,7 +283,7 @@
               <span><span class="swatch swatch-km"></span> Km selecionado</span>
               <span><span class="swatch swatch-route"></span> Trajeto rodoviário</span>
             </span>
-            <span id="reversal-legend" style="display:none"><span class="swatch" style="background:#ef4444"></span> Ponto de inversão de marcha</span>
+            <span id="reversal-legend" style="display:none"><span class="swatch" style="background:#facc15"></span> Percurso de inversão <span class="swatch" style="background:#ef4444;margin-left:8px"></span> Travessia da A1</span>
           </div>
         </div>
       </div>
@@ -700,6 +700,7 @@ let occurrenceMarker;
 let selectionArrow;
 let reversalRoute;
 let overviewLayer;
+let renderedReversal = false;
 let mapRenderVersion = 0;
 let renderedRoad = null;
 const roadRouteCache = {};
@@ -732,6 +733,54 @@ const MAINLINE_PATHS = {
 };
 const ROAD_COLORS = {A1:'#38bdf8', A8:'#fb923c', A17:'#4ade80', A19:'#c084fc'};
 
+/* Percurso desenhado pelo utilizador e alinhado com as vias da área de serviço
+   cartografadas no OpenStreetMap. É um esquema visual, não uma rota GPS. */
+const A1_LEIRIA_REVERSAL_PATH = [
+  [39.7145192, -8.7117255],
+  [39.7142013, -8.7116081],
+  [39.7140025, -8.7116027],
+  [39.7137321, -8.7116674],
+  [39.7136239, -8.7118739],
+  [39.7134824, -8.7119678],
+  [39.7129648, -8.7119110],
+  [39.7127010, -8.7120514],
+  [39.7117345, -8.7114208],
+  [39.7116576, -8.7112785],
+  [39.7116640, -8.7109573],
+  [39.7114118, -8.7111028],
+  [39.7114721, -8.7116528],
+  [39.7114100, -8.7117660],
+  [39.7113253, -8.7117571],
+  [39.7111205, -8.7115820],
+  [39.7110598, -8.7114514],
+  [39.7108140, -8.7102490],
+  [39.7108057, -8.7099808],
+  [39.7111654, -8.7089677],
+  [39.7112621, -8.7088168],
+  [39.7114110, -8.7086994],
+  [39.7116350, -8.7086773],
+  [39.7126416, -8.7088481],
+  [39.7129087, -8.7087450],
+  [39.7130004, -8.7088294],
+  [39.7130167, -8.7089264],
+  [39.7129888, -8.7090185],
+  [39.7128882, -8.7090829],
+  [39.7127861, -8.7090225],
+  [39.7127388, -8.7091766],
+  [39.7126116, -8.7092381],
+  [39.7127619, -8.7092774],
+  [39.7128444, -8.7092586],
+  [39.7134164, -8.7090424],
+  [39.7142167, -8.7095811],
+  [39.7142499, -8.7097717],
+  [39.7141047, -8.7104387],
+  [39.7140644, -8.7107405],
+  [39.7140726, -8.7108749],
+  [39.7141415, -8.7110892],
+  [39.7142392, -8.7112488],
+  [39.7145096, -8.7115275]
+];
+
 function refLatLng(ref){
   const [lat, lng] = ref.coords.split(',').map(Number);
   return [lat, lng];
@@ -759,10 +808,20 @@ function clearReversalRoute(){
 function drawLeiriaReversalRoute(){
   if (!ppiMap) return;
   clearReversalRoute();
-  reversalRoute = L.circleMarker([39.71160,-8.71484], {
+  reversalRoute = L.featureGroup().addTo(ppiMap);
+  L.polyline(A1_LEIRIA_REVERSAL_PATH, {
+    color:'#1f2937', weight:9, opacity:.9, lineCap:'round', lineJoin:'round',
+    interactive:false
+  }).addTo(reversalRoute);
+  L.polyline(A1_LEIRIA_REVERSAL_PATH, {
+    color:'#facc15', weight:6, opacity:1, lineCap:'round', lineJoin:'round',
+    interactive:false
+  }).addTo(reversalRoute);
+  const crossing = [39.7110935, -8.7091703];
+  const marker = L.circleMarker(crossing, {
     radius:10, color:'#ffffff', weight:2, fillColor:'#ef4444', fillOpacity:1
-  }).addTo(ppiMap);
-  reversalRoute.bindPopup('<strong>Inversão de marcha — Estação Serviço Leiria (Km 125,6)</strong><br>Entrar em Leiria no sentido N/S e inverter para seguir S/N.');
+  }).addTo(reversalRoute);
+  marker.bindPopup('<strong>Travessia entre as duas áreas de serviço</strong><br>Ponto aproximado onde o percurso amarelo cruza a A1. Confirme a manobra no PPI.');
 }
 
 function showSelectionArrow(latlng){
@@ -860,6 +919,7 @@ function renderMap(road, kmSel){
   document.getElementById('intervention-alert').style.display = outsideIntervention ? 'block' : 'none';
   if (outsideIntervention) clearRecommendationsOutsideIntervention();
   const showLeiriaReversal = requiresLeiriaReversal(road, mapKm, document.getElementById('dir').value);
+  const reversalChanged = showLeiriaReversal !== renderedReversal;
   document.getElementById('reversal-legend').style.display = showLeiriaReversal ? 'inline' : 'none';
   document.getElementById('map-reversal-alert').style.display = showLeiriaReversal ? 'block' : 'none';
   left.textContent = 'Selecione uma autoestrada';
@@ -877,6 +937,7 @@ function renderMap(road, kmSel){
     clearReversalRoute();
     occurrenceMarker = null;
     renderedRoad = null;
+    renderedReversal = false;
     if (!overviewLayer) {
       overviewLayer = L.featureGroup().addTo(ppiMap);
       Object.entries(MAINLINE_PATHS).forEach(([roadName, coordinates]) => {
@@ -935,10 +996,13 @@ function renderMap(road, kmSel){
   }
   // Só centra automaticamente ao abrir ou trocar de autoestrada. Assim, a
   // consulta não altera o zoom/enquadramento ajustado manualmente.
-  if (roadChanged) {
+  if (showLeiriaReversal && (roadChanged || reversalChanged)) {
+    ppiMap.fitBounds(reversalRoute.getBounds(), {padding:[25,25], maxZoom:17});
+  } else if (roadChanged) {
     ppiMap.fitBounds(mapMarkers.getBounds(), {padding:[30,30], maxZoom:14});
   }
   renderedRoad = road;
+  renderedReversal = showLeiriaReversal;
   if (occurrenceMarker) showSelectionArrow(occurrenceMarker.getLatLng());
   setTimeout(() => ppiMap.invalidateSize(), 0);
 }
@@ -1048,7 +1112,7 @@ document.getElementById('search').addEventListener('click', ()=>{
       ${leiriaReversal ? `
         <div class="reversal-notice">
           <strong>⚠️ Inversão de sentido obrigatória — ES Leiria (Km 125,6)</strong>
-          Entrar pela entrada de Leiria no sentido N/S, utilizar o circuito da estação de serviço para inverter a marcha e seguir no sentido S/N até à ocorrência. O percurso está assinalado a amarelo no mapa. Os meios a enviar são os definidos para o mesmo km no sentido N/S.
+          Entrar pela entrada de Leiria no sentido N/S, utilizar o circuito da estação de serviço para inverter a marcha e seguir no sentido S/N até à ocorrência. O percurso amarelo no mapa é esquemático e o ponto vermelho assinala a travessia da A1; confirmar a manobra no PPI. Os meios a enviar são os definidos para o mesmo km no sentido N/S.
         </div>` : ''}
     `;
 

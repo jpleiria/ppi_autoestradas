@@ -288,10 +288,10 @@
           </div>
           <div id="reversal-map-panel" class="reversal-map-panel">
             <div class="reversal-map-title">Inversão de marcha · Estação de Serviço Leiria</div>
-            <div class="reversal-map-caption">Mapa independente: arraste para explorar e use os controlos para ajustar o zoom.</div>
+            <div class="reversal-map-caption">Ocorrência, percurso de inversão e portagens da A1. Arraste ou ajuste o zoom para explorar.</div>
             <div id="reversal-map" aria-label="Mapa da inversão de marcha na Estação de Serviço Leiria"></div>
             <div id="map-reversal-alert" class="map-reversal-alert"><strong>⚠️ Inversão de marcha na Estação Serviço Leiria (Km 125,6).</strong> O traço amarelo representa o percurso entre as duas áreas de serviço. É esquemático.</div>
-            <div class="legend"><span><span class="swatch" style="background:#facc15"></span> Percurso de inversão</span><span><span class="swatch" style="background:#ef4444"></span> Travessia da A1</span></div>
+            <div class="legend"><span><span class="swatch swatch-km"></span> Km pesquisado</span><span><span class="swatch swatch-ref"></span> Portagens</span><span><span class="swatch" style="background:#facc15"></span> Percurso de inversão</span><span><span class="swatch" style="background:#ef4444"></span> Travessia da A1</span></div>
           </div>
         </div>
       </div>
@@ -708,6 +708,7 @@ let roadLine;
 let occurrenceMarker;
 let selectionArrow;
 let reversalRoute;
+let reversalOccurrenceMarker;
 let overviewLayer;
 let renderedReversal = false;
 let mapRenderVersion = 0;
@@ -791,6 +792,7 @@ function clearReversalRoute(){
     reversalRoute.remove();
     reversalRoute = null;
   }
+  reversalOccurrenceMarker = null;
 }
 
 function drawLeiriaReversalRoute(){
@@ -807,6 +809,11 @@ function drawLeiriaReversalRoute(){
   L.geoJSON({type:'MultiLineString', coordinates:MAINLINE_PATHS.A1}, {
     style:{color:ROAD_COLORS.A1, weight:5, opacity:.9}, interactive:false
   }).addTo(reversalRoute);
+  DATA.A1.references.forEach(ref => {
+    L.marker(refLatLng(ref), {
+      icon:L.divIcon({className:'toll-icon', iconSize:[14,14], iconAnchor:[7,7]})
+    }).bindPopup(`<strong>${ref.name}</strong><br>Portagem · Km ${fmtKm(ref.km)}`).addTo(reversalRoute);
+  });
   L.polyline(A1_LEIRIA_REVERSAL_PATH, {
     color:'#1f2937', weight:9, opacity:.9, lineCap:'round', lineJoin:'round',
     interactive:false
@@ -991,10 +998,23 @@ function renderMap(road, kmSel, focusOccurrence = false){
   drawRealRoadLine(road, refs, mapKm, renderVersion);
   if (showLeiriaReversal && (reversalChanged || !reversalRoute)) {
     drawLeiriaReversalRoute();
-    setTimeout(() => {
-      reversalMap.invalidateSize();
-      reversalMap.fitBounds(L.latLngBounds(A1_LEIRIA_REVERSAL_PATH), {padding:[25,25], maxZoom:17});
-    }, 0);
+  }
+  if (showLeiriaReversal && occurrenceMarker && reversalMap) {
+    const occurrencePosition = occurrenceMarker.getLatLng();
+    const popup = `<strong>Ocorrência · A1 Km ${fmtKm(mapKm)}</strong><br>Posição aproximada entre referências PPI.`;
+    if (reversalOccurrenceMarker) {
+      reversalOccurrenceMarker.setLatLng(occurrencePosition).setPopupContent(popup);
+    } else {
+      reversalOccurrenceMarker = L.circleMarker(occurrencePosition, {
+        radius:9, color:'#ffffff', weight:2, fillColor:'#22c55e', fillOpacity:1
+      }).bindPopup(popup).addTo(reversalRoute);
+    }
+    if (reversalChanged || focusOccurrence) {
+      setTimeout(() => {
+        reversalMap.invalidateSize();
+        reversalMap.fitBounds(L.latLngBounds(A1_LEIRIA_REVERSAL_PATH), {padding:[25,25], maxZoom:17});
+      }, 0);
+    }
   }
   // Uma pesquisa centra o km consultado; cada mapa mantém o seu próprio zoom.
   if (focusOccurrence && occurrenceMarker) {

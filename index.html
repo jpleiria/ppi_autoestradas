@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Auto-Estradas|Concelho Leiria</title>
   <link rel="icon" href="favicon.ico">
-  <link rel="stylesheet" href="vendor/leaflet/leaflet.css" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <style>
     :root{
       --bg:#0f1221;
@@ -307,8 +307,7 @@
     <div>- Versão 6.2 -</div>
 </footer>  </div>
 
-<script src="vendor/leaflet/leaflet.js"></script>
-<script>if (!window.L) document.write('<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>');</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 /* Utilitários */
 const normalizeUnit = s => s
@@ -691,6 +690,7 @@ let roadLine;
 let occurrenceMarker;
 let selectionArrow;
 let reversalRoute;
+let overviewLayer;
 let mapRenderVersion = 0;
 let renderedRoad = null;
 const roadRouteCache = {};
@@ -825,6 +825,17 @@ function drawRealRoadLine(road, refs, kmSel, renderVersion){
   document.getElementById('scale-right').textContent = 'Eixo principal: cálculo por quilometragem entre referências PPI';
 }
 
+function ensureMap(mapEl){
+  if (ppiMap) return;
+  mapEl.innerHTML = '';
+  ppiMap = L.map(mapEl, {scrollWheelZoom:true, zoomControl:true});
+  ppiMap.on('zoomstart', clearSelectionArrow);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom:19,
+    attribution:'&copy; OpenStreetMap contributors'
+  }).addTo(ppiMap);
+}
+
 function renderMap(road, kmSel){
   const mapEl = document.getElementById('route-map');
   const left = document.getElementById('scale-left');
@@ -842,34 +853,35 @@ function renderMap(road, kmSel){
   left.textContent = 'Selecione uma autoestrada';
   right.textContent = 'Base cartográfica OpenStreetMap';
 
-  if (!road || !DATA[road]) {
-    if (ppiMap) {
-      ppiMap.remove();
-      ppiMap = null;
-      mapMarkers = null;
-      roadLine = null;
-      occurrenceMarker = null;
-      selectionArrow = null;
-      reversalRoute = null;
-      renderedRoad = null;
-    }
-    mapEl.innerHTML = '<div class="map-message">Selecione uma autoestrada para ver o troço na cartografia real.</div>';
-    return;
-  }
   if (!window.L) {
     mapEl.innerHTML = '<div class="map-message">Não foi possível carregar o mapa. Verifique a ligação à internet e atualize a página.</div>';
     return;
   }
-  const roadChanged = renderedRoad !== road;
-  if (!ppiMap) {
-    mapEl.innerHTML = '';
-    ppiMap = L.map(mapEl, {scrollWheelZoom:true, zoomControl:true});
-    ppiMap.on('zoomstart', clearSelectionArrow);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom:19,
-      attribution:'&copy; OpenStreetMap contributors'
-    }).addTo(ppiMap);
+  ensureMap(mapEl);
+  if (!road || !DATA[road]) {
+    if (mapMarkers) { mapMarkers.remove(); mapMarkers = null; }
+    if (roadLine) { roadLine.remove(); roadLine = null; }
+    clearSelectionArrow();
+    clearReversalRoute();
+    occurrenceMarker = null;
+    renderedRoad = null;
+    if (!overviewLayer) {
+      overviewLayer = L.geoJSON({
+        type:'MultiLineString',
+        coordinates:Object.values(MAINLINE_PATHS).flat()
+      }, {
+        style:{color:'#7dd3fc', weight:3, opacity:.45, lineCap:'round'},
+        interactive:false
+      }).addTo(ppiMap);
+    }
+    ppiMap.fitBounds(overviewLayer.getBounds(), {padding:[25,25], maxZoom:11});
+    left.textContent = 'Vista geral · A1, A8, A17 e A19';
+    right.textContent = 'Selecione uma autoestrada para ver o troço';
+    setTimeout(() => ppiMap.invalidateSize(), 0);
+    return;
   }
+  if (overviewLayer) { overviewLayer.remove(); overviewLayer = null; }
+  const roadChanged = renderedRoad !== road;
   if (mapMarkers) mapMarkers.remove();
   clearSelectionArrow();
   clearReversalRoute();
@@ -1108,6 +1120,7 @@ document.getElementById('clear').addEventListener('click', ()=>{
   
   renderMap('', null);
 });
+renderMap('', null);
 </script>
 </body>
 </html>
